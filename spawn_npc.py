@@ -106,8 +106,8 @@ def main():
     random.seed(args.seed if args.seed is not None else int(time.time()))
 
     try:
-        world = client.load_world('Town04')
-        # world = client.get_world()
+        # world = client.load_world('Town04')
+        world = client.get_world()
 
         traffic_manager = client.get_trafficmanager(args.tm_port)
         traffic_manager.set_global_distance_to_leading_vehicle(1.0)
@@ -270,10 +270,10 @@ def main():
         # example of how to use parameters
         traffic_manager.global_percentage_speed_difference(30.0)
         
-        spectator = world.get_spectator()
-        st_location = carla.Location(x=0,y=0,z=0)
-        spectator.set_transform(carla.Transform(st_location + carla.Location(z=500),
-            carla.Rotation(pitch=-90)))
+        # spectator = world.get_spectator()
+        # st_location = carla.Location(x=0,y=0,z=0)
+        # spectator.set_transform(carla.Transform(st_location + carla.Location(z=500),
+        #     carla.Rotation(pitch=-90)))
         while True:
             if args.sync and synchronous_master:
                 world.tick()

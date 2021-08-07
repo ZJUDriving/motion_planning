@@ -8,6 +8,7 @@
 DP从起点开始搜索，DP插值统一用Curve类（速度较慢）
 """
 
+from posix import EX_UNAVAILABLE
 import carla
 import numpy as np
 import math
@@ -50,7 +51,7 @@ class PlannerInterface():
         # print(self._waypoint_buffer)
         command = Command.LANEFOLLOW
         waypoint_ahead = []
-        ob_box, ob_rot = get_ob_box(self.world, self.ob_list)
+        # ob_box, ob_rot = get_ob_box(self.world, self.ob_list)
         for i in range(len(self._waypoint_buffer)):
             waypoint_ahead.append(self._waypoint_buffer[i][0])
         global STEP_COUNT
@@ -72,7 +73,7 @@ class PlannerInterface():
         # 开始规划
         # if command == Command.CHANGELANELEFT:
         start_time = time.time()
-        self.coor_trans(waypoint_ahead,ob_box,command)
+        self.coor_trans(waypoint_ahead,command)
         self.planner = PathPlanner(self.p_map)
         local_buff = self.planner.plan()
         end_time = time.time()
@@ -99,7 +100,7 @@ class PlannerInterface():
         return local_buff
         
     """ 完成坐标转换 """
-    def coor_trans(self, waypoint_ahead, ob_box, command):
+    def coor_trans(self, waypoint_ahead, command):
         l_width = 3.5   # 车道宽度
         n_l = 7         # 车道纵向采点个数（奇数）
         n_s = len(waypoint_ahead)   # 车道横向采点个数，不含无人车自身位置
@@ -125,8 +126,13 @@ class PlannerInterface():
             ref_line.append(pos)
         self.p_map = PlannerMap(ego_rot,ego_pos)
         self.p_map.add_ref_line(ref_line,l_width,n_l,n_s,cal_theta_ind)
-        self.p_map.add_obstacle(self.get_point(ob_box.location))
-        self.p_map.ob_dist = math.sqrt(ob_box.extent.x**2+ob_box.extent.y**2)
+        debug = self.world.debug
+        for ob in self.ob_list:
+            ob_box, ob_rot = get_ob_box(self.world, ob)
+            res = self.p_map.add_obstacle(self.get_point(ob_box.location),math.sqrt(ob_box.extent.x**2+ob_box.extent.y**2))
+            if res:
+                print("draw")
+                debug.draw_box(ob_box, ob_rot, 0.2, carla.Color(0,255,0,0),life_time=1.0)
         if DRAW_FRENET_FIG: # 绘制Frenet系采样地图
             self.p_map.show()
 
@@ -141,6 +147,8 @@ class PlannerMap():
         self.t = t
         self.final_point = []
         self.ob_point = []
+        self.ob_list = []
+        self.ignore_dist = 20
         self.ob_dist = 0.0
         self.st_l = 0       # Frenet系下规划第一列下标     
         
@@ -192,10 +200,19 @@ class PlannerMap():
             # plt.show()
             save_fig()
 
-    def add_obstacle(self, ob):
+    def add_obstacle(self, ob, ob_dist):
         ob = self.world_to_map(ob)
-        s,l = self.converter.cartesian_to_frenet(ob[0],ob[1])
-        self.ob_point = np.array([s,l])
+        ob_to_ori = cal_dist(np.array([0.0,0.0]),ob)
+        # print(ob_to_ori)
+        if ob_to_ori < self.ignore_dist:
+            print(ob_to_ori)
+            s,l = self.converter.cartesian_to_frenet(ob[0],ob[1])
+            ob_point = np.array([s,l])
+            self.ob_list.append(ob_point)
+            self.ob_dist = max(self.ob_dist, ob_dist)
+            return True
+        else:
+            return False
     
     def world_to_map(self, point):
         point = point - self.t
@@ -233,13 +250,14 @@ class PlannerMap():
         plt.scatter(self.ego_point[0],self.ego_point[1],c='yellow')
         # plt.scatter(self.final_point[0],self.final_point[1],c='yellow')
         
-        # plt.scatter(self.start_point[0],self.start_point[1],c='red')
-        if abs(self.ob_point[1]) - self.ob_dist < self.l_width:     # 是否绘制障碍物
-            th = np.arange(0,2*math.pi,math.pi/20)
-            circle_x = self.ob_point[0] + self.ob_dist*np.cos(th)
-            circle_y = self.ob_point[1] + self.ob_dist*np.sin(th)
-            plt.scatter(self.ob_point[0],self.ob_point[1],c='green')
-            plt.scatter(circle_x,circle_y,c='green')
+        for ob_point in self.ob_list:
+            # plt.scatter(self.start_point[0],self.start_point[1],c='red')
+            if abs(ob_point[1]) - self.ob_dist < self.l_width:     # 是否绘制障碍物
+                th = np.arange(0,2*math.pi,math.pi/20)
+                circle_x = ob_point[0] + self.ob_dist*np.cos(th)
+                circle_y = ob_point[1] + self.ob_dist*np.sin(th)
+                plt.scatter(ob_point[0],ob_point[1],c='green')
+                plt.scatter(circle_x,circle_y,c='green')
         # plt.show()
         # time.sleep(100)
 
@@ -256,35 +274,39 @@ class PathPlanner():
         self.d_s = 0.3      # 插值间隔
         self.w_d = 0.5      # cost线性组合系数
         self.path_ind_list = []
+        self.no_path_cost = 1e3
 
 
     def plan(self):
         # DP搜索
         tmp_l = 0   # self.p_map.st_l# int((self.p_map.n_l-1)/2)
-        res = self.find_path()
-        refer_path = np.zeros((2,self.p_map.n_s+1)) # 选取的路径点
-        refer_path[0][0] = self.p_map.ego_point[0]  # 无人车的位置
-        refer_path[1][0] = self.p_map.ego_point[1]
-        for s in range(self.p_map.n_s):
-            tmp_l = self.path_ind_list[s]
-            refer_path[0][s+1] = self.p_map.s_map[s][tmp_l]
-            refer_path[1][s+1] = self.p_map.l_map[s][tmp_l]
-            if DRAW_FRENET_FIG:    # 选取的路径点
-                plt.scatter(refer_path[0][s+1],refer_path[1][s+1],c='red')
-        # 五次样条插值
         local_buff = []
-        for i in range(2):
-            ss, ll = self.get_path(refer_path[0][i],refer_path[1][i],refer_path[0][i+1],refer_path[1][i+1],0)
-            for j in range(len(ss)):
-                rx, ry = self.p_map.converter.frenet_to_cartesian(ss[j],ll[j])
-                node = self.p_map.map_to_world(to_point(rx, ry))
-                local_buff.append(carla.Location(x=node[0],y=node[1]))
+        path_found = self.find_path()
+        if path_found:
+            # print(self.cost_map)
+            refer_path = np.zeros((2,self.p_map.n_s+1)) # 选取的路径点
+            refer_path[0][0] = self.p_map.ego_point[0]  # 无人车的位置
+            refer_path[1][0] = self.p_map.ego_point[1]
+            for s in range(self.p_map.n_s):
+                tmp_l = self.path_ind_list[s]
+                refer_path[0][s+1] = self.p_map.s_map[s][tmp_l]
+                refer_path[1][s+1] = self.p_map.l_map[s][tmp_l]
+                if DRAW_FRENET_FIG:    # 选取的路径点
+                    plt.scatter(refer_path[0][s+1],refer_path[1][s+1],c='red')
+            # 五次样条插值
+            
+            for i in range(2):
+                ss, ll = self.get_path(refer_path[0][i],refer_path[1][i],refer_path[0][i+1],refer_path[1][i+1],0)
+                for j in range(len(ss)):
+                    rx, ry = self.p_map.converter.frenet_to_cartesian(ss[j],ll[j])
+                    node = self.p_map.map_to_world(to_point(rx, ry))
+                    local_buff.append(carla.Location(x=node[0],y=node[1]))
+                if DRAW_FRENET_FIG:
+                    plt.plot(ss,ll,c='red')
             if DRAW_FRENET_FIG:
-                plt.plot(ss,ll,c='red')
-        if DRAW_FRENET_FIG:
-            save_fig()
-        # plt.show()
-        # time.sleep(100)
+                save_fig()
+            # plt.show()
+            # time.sleep(100)
         return local_buff
     
     def cal_cost(self,s_1,l_1,s_2,l_2):
@@ -300,7 +322,14 @@ class PathPlanner():
         smooth_cost = self.d_s*(np.sum(dll**2) + np.sum(ddll**2) + np.sum(dddll**2))
         # 障碍物cost
         arr = np.vstack((ss,ll))
-        min_dist, min_p = cal_dist_arr(arr,self.p_map.ob_point)
+        if self.p_map.ob_list:
+            tmp_dist = []
+            for ob_point in self.p_map.ob_list:
+                dist, min_p = cal_dist_arr(arr,ob_point)
+                tmp_dist.append(dist)
+            min_dist = min(tmp_dist)
+        else:
+            min_dist = 10000
         if min_dist < self.p_map.ob_dist:
             ob_cost = 30000
         else:
@@ -316,6 +345,10 @@ class PathPlanner():
         for s in range(1,self.p_map.n_s):
             for l in range(self.p_map.n_l):
                 self.find_path_point(s,l)
+            tmp_cost = self.cost_map[s,:]
+            if np.min(tmp_cost) > self.no_path_cost:
+                print("Path not found!")
+                return False
         # 找到最优终点
         tmp_cost = self.cost_map[-1,:]
         end_l = np.argmin(tmp_cost)
@@ -338,7 +371,7 @@ class PathPlanner():
             for j in range(self.p_map.n_l):
                 tmp_cost[0][j] = self.cal_cost(s-1,j,s,l) + self.cost_map[s-1][j]
             self.cost_map[s][l] = np.amin(tmp_cost)     # 暂存cost，用于后续计算
-            self.index_map[s][l] = np.argmin(tmp_cost)  # 记录后续列下标在当前点位置    
+            self.index_map[s][l] = np.argmin(tmp_cost)  # 记录后续列下标在当前点位置  
         return True
 
     """ 五次多项式插值得到分段路径，tips = 1时返回导数信息 """

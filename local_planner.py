@@ -70,6 +70,7 @@ class LocalPlanner(object):
         self.local_ind = 0
         self.local_buff = []
         self.local_goal = []
+        self.stop_flag = False
 
     def reset_vehicle(self):
         """Reset the ego-vehicle"""
@@ -188,6 +189,7 @@ class LocalPlanner(object):
             self._target_speed = self._vehicle.get_speed_limit()
 
         if len(self.waypoints_queue) == 0:
+            print("No way point")
             control = carla.VehicleControl()
             control.steer = 0.0
             control.throttle = 0.0
@@ -232,7 +234,8 @@ class LocalPlanner(object):
                 max_index = i
         if max_index >= 0:
             for i in range(max_index + 1):
-                # self._waypoint_buffer.popleft()
+                if self._waypoint_buffer:
+                    self._waypoint_buffer.popleft()
                 if self.waypoints_queue:
                     next_p_found = True
                     next_p = self.waypoints_queue.popleft()
@@ -257,10 +260,21 @@ class LocalPlanner(object):
                 planner = PlannerInterface(self.world, self._waypoint_buffer, self._vehicle, self.ob_list)
             else:
                 print("Waypoint buff is empty.")
-            self._waypoint_buffer.popleft()
             self.local_buff = planner.run_step()
             self.re_plan = False
             self.local_ind = 0
+
+        if len(self.local_buff) == 0:   # 没有找到路，停车
+            print("Stop now")
+            control = carla.VehicleControl()
+            control.steer = 0.0
+            control.throttle = 0.0
+            control.brake = 1.0
+            # control.hand_brake = False
+            # control.manual_gear_shift = False
+            self.re_plan = True
+            return control
+
         if self.local_ind < len(self.local_buff):   # 根据路径更新下一个局部目标点
             tmp_ind = self.local_ind
             for i in range(self.local_ind,len(self.local_buff)):
@@ -283,7 +297,7 @@ class LocalPlanner(object):
 
         # print(self._target_speed)
         control = self._pid_controller.run_step(self._target_speed, self.target_waypoint)
-                
+        control.brake = 0.0        
 
         # if debug:
         #     draw_waypoints(self._vehicle.get_world(),

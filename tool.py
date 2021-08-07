@@ -12,6 +12,7 @@ def get_ob_box(world, ob):
     world_snapshot = world.get_snapshot()
     for actor_snapshot in world_snapshot:
         if actor_snapshot.id == ob.id:
+            # ob_box = carla.BoundingBox(actor_snapshot.get_transform().location,actor_snapshot.bounding_box)
             ob_box = carla.BoundingBox(actor_snapshot.get_transform().location,ob.bounding_box.extent)
             ob_rot = actor_snapshot.get_transform().rotation
             break
@@ -88,4 +89,5 @@ class RoadOption(Enum):
     LANEFOLLOW = 4
     CHANGELANELEFT = 5
     CHANGELANERIGHT = 6
+
 
