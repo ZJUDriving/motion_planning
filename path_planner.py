@@ -22,10 +22,18 @@ from cartesian_frenet_conversion import CartesianFrenetConverter
 
 STEP_COUNT = 0      # 路径更新下标
 FIG_COUNT = 0       # 图片下标
-DRAW_FRENET_FIG = False    # 绘制路径规划结果并保存图片
+SAVE_PATH = "../output/000"
 DRAW_DEBUG = True   # 在Carla中绘制结果
+DRAW_FRENET_FIG = False    # 绘制路径规划结果并保存图片
 DRAW_WORLD_FIG = False
 DRAW_ROBOT_FIG = False
+
+
+def save_fig():
+    global FIG_COUNT
+    mkdir(SAVE_PATH)
+    plt.savefig(SAVE_PATH + "/fig" + str(FIG_COUNT) + ".png")
+    FIG_COUNT = FIG_COUNT + 1
 
 
 """ 路径规划对外接口 """
@@ -85,10 +93,7 @@ class PlannerInterface():
             for pos in local_buff:
                 posi = self.get_point(pos)
                 plt.scatter(posi[0],posi[1],c='red')
-            global FIG_COUNT
-            mkdir("output/000")
-            plt.savefig("output/000/fig" + str(FIG_COUNT) + ".png")
-            FIG_COUNT = FIG_COUNT + 1
+            save_fig()
         
         STEP_COUNT = STEP_COUNT + 1
         return local_buff
@@ -185,10 +190,7 @@ class PlannerMap():
         # print(self.l_map)
         if DRAW_ROBOT_FIG:
             # plt.show()
-            global FIG_COUNT
-            mkdir("output/000")
-            plt.savefig("output/000/fig" + str(FIG_COUNT) + ".png")
-            FIG_COUNT = FIG_COUNT + 1
+            save_fig()
 
     def add_obstacle(self, ob):
         ob = self.world_to_map(ob)
@@ -240,6 +242,8 @@ class PlannerMap():
             plt.scatter(circle_x,circle_y,c='green')
         # plt.show()
         # time.sleep(100)
+
+    
 
 
 """ 局部路径规划器 """
@@ -300,7 +304,7 @@ class PathPlanner():
             if DRAW_FRENET_FIG:
                 plt.plot(ss,ll,c='red')
         if DRAW_FRENET_FIG:
-            self.save_fig()
+            save_fig()
         # plt.show()
         # time.sleep(100)
         return local_buff
@@ -392,12 +396,6 @@ class PathPlanner():
             return ss, ll, dll, ddll, dddll
         else:
             return ss, ll
-    
-    def save_fig(self):
-        global FIG_COUNT
-        mkdir("output/000")
-        plt.savefig("output/000/fig" + str(FIG_COUNT) + ".png")
-        FIG_COUNT = FIG_COUNT + 1
 
 
         
