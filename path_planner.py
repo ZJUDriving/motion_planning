@@ -260,39 +260,17 @@ class PathPlanner():
 
     def plan(self):
         # DP搜索
-        # self.p_map.show()
-        # self.save_fig()
-        tmp_s = -1
         tmp_l = 0   # self.p_map.st_l# int((self.p_map.n_l-1)/2)
-        res = self.find_path_point(tmp_s,tmp_l)
-        # print(self.cost_map)
+        res = self.find_path()
         refer_path = np.zeros((2,self.p_map.n_s+1)) # 选取的路径点
-        refer_path[0][0] = self.p_map.ego_point[0]
+        refer_path[0][0] = self.p_map.ego_point[0]  # 无人车的位置
         refer_path[1][0] = self.p_map.ego_point[1]
-        # tmp_l = self.p_map.st_l
         for s in range(self.p_map.n_s):
-            # refer_path[0][s+1] = self.p_map.s_map[s][tmp_l]
-            # refer_path[1][s+1] = self.p_map.l_map[s][tmp_l]
-            # tmp_l = int(self.index_map[s][tmp_l])
             tmp_l = self.path_ind_list[s]
             refer_path[0][s+1] = self.p_map.s_map[s][tmp_l]
             refer_path[1][s+1] = self.p_map.l_map[s][tmp_l]
             if DRAW_FRENET_FIG:    # 选取的路径点
                 plt.scatter(refer_path[0][s+1],refer_path[1][s+1],c='red')
-        # # 三次样条插值
-        # print(arr_x)
-        # print(arr_y)
-        # print(refer_path)
-        # fun = interp1d(refer_path[0][:],refer_path[1][:],kind="cubic",bounds_error=False)
-        # max_s = refer_path[0][2]
-        # min_s = refer_path[0][0]
-        # new_s = np.arange(min_s,max_s,self.d_s)
-        # new_l = fun(new_s)
-        # local_buff = []
-        # for i in range(len(new_s)):
-        #     node = self.p_map.map_to_world(to_point(new_s[i],new_l[i]))
-        #     local_buff.append(carla.Location(x=node[0],y=node[1]))
-        # plt.plot(new_s,new_l,c='red')
         # 五次样条插值
         local_buff = []
         for i in range(2):
@@ -312,65 +290,56 @@ class PathPlanner():
     def cal_cost(self,s_1,l_1,s_2,l_2):
         if s_1 != -1:
             p1 = np.array([self.p_map.s_map[s_1][l_1],self.p_map.l_map[s_1][l_1]])
-        else:
+        else:   # 初始位置
             p1 = self.p_map.ego_point
         p2 = np.array([self.p_map.s_map[s_2][l_2],self.p_map.l_map[s_2][l_2]])
-        # 五次多项式
+        # 五次多项式cost
         ss, ll, dll, ddll, dddll = self.get_path(p1[0],p1[1],p2[0],p2[1],1)
         mid_l_value = self.p_map.l_map[s_1][self.p_map.mid_l]
         guide_cost = self.d_s*np.sum((ll-mid_l_value)**2)
         smooth_cost = self.d_s*(np.sum(dll**2) + np.sum(ddll**2) + np.sum(dddll**2))
-
+        # 障碍物cost
         arr = np.vstack((ss,ll))
         min_dist, min_p = cal_dist_arr(arr,self.p_map.ob_point)
         if min_dist < self.p_map.ob_dist:
             ob_cost = 30000
         else:
             ob_cost = 0
-        # # 三次样条，先不使用曲率cost
-        # mid_l_value = self.p_map.l_map[s_1][self.p_map.mid_l]
-        # guide_cost = (abs(p1[1]-mid_l_value) + abs(p2[1]-mid_l_value)) / 2
-        # length_cost = cal_dist(p1,p2)
         return self.w_d*guide_cost + (1-self.w_d)*smooth_cost + ob_cost
 
-    """ DP递归搜索最优路径组合，记录在index_map中 """
-    """ s=0不存，s = 1-7 """
+    """ DP递推搜索最优路径组合 """
+    def find_path(self):
+        # 找到起点
+        for l in range(self.p_map.n_l):
+            self.find_path_point(0,l)
+        # DP搜索最优路径
+        for s in range(1,self.p_map.n_s):
+            for l in range(self.p_map.n_l):
+                self.find_path_point(s,l)
+        # 找到最优终点
+        tmp_cost = self.cost_map[-1,:]
+        end_l = np.argmin(tmp_cost)
+        # 回溯得到整条路径
+        self.path_ind_list = []
+        self.path_ind_list.append(end_l)
+        for i in range(1,self.p_map.n_s):
+            end_s = self.p_map.n_s - i
+            end_l = int(self.index_map[end_s][end_l])
+            self.path_ind_list.insert(0,end_l)
+        return True
+
+    """ 找到(s,l)的前一个最优点l值，记录在index_map中 """
     def find_path_point(self,s,l):
-        if s == -1: # 最后找到最优的终点，回溯路径
+        if s == 0:   # 边界条件，第一列位置
+            self.cost_map[s][l] = self.cal_cost(-1,-1,s,l)
+            self.index_map[s][l] = -1
+        else:
+            tmp_cost = np.zeros((1,self.p_map.n_l)) 
             for j in range(self.p_map.n_l):
-                self.find_path_point(self.p_map.n_s-1,j)
-            tmp_cost = self.cost_map[-1,:]
-            end_l = np.argmin(tmp_cost)
-            # print(tmp_cost)
-            # print(end_l)
-            self.path_ind_list = []
-            self.path_ind_list.append(end_l)
-            for i in range(1,self.p_map.n_s):
-                end_s = self.p_map.n_s - i
-                # print(end_s,end_l)
-                end_l = int(self.index_map[end_s][end_l])
-                self.path_ind_list.insert(0,end_l)
-            return 1
-        # 如果之前已经搜索过直接返回
-        if self.index_map[s][l] != self.init_ind:
-            return self.cost_map[s][l]
-        # 求当前列到后续列cost最小的路径
-        tmp_cost = np.zeros((1,self.p_map.n_l)) 
-        for j in range(self.p_map.n_l):
-            if s == 0:   # 边界条件，第一列位置
-                self.cost_map[s][l] = self.cal_cost(-1,-1,s,l)
-                self.index_map[s][l] = -1
-            else:   # 递归
-                tmp_cost[0][j] = self.cal_cost(s-1,j,s,l) + self.find_path_point(s-1,j)     
-        # # cost和下标的储存
-        # if s == -1: # 对应无人车的点
-        #     self.p_map.st_l = np.argmin(tmp_cost)
-        #     return np.amin(tmp_cost)
-        # else:
-        if s != 0:
-            self.cost_map[s][l] = np.amin(tmp_cost)     # 记录cost
-            self.index_map[s][l] = np.argmin(tmp_cost)  # 记录后续列下标在当前点位置
-        return self.cost_map[s][l]
+                tmp_cost[0][j] = self.cal_cost(s-1,j,s,l) + self.cost_map[s-1][j]
+            self.cost_map[s][l] = np.amin(tmp_cost)     # 暂存cost，用于后续计算
+            self.index_map[s][l] = np.argmin(tmp_cost)  # 记录后续列下标在当前点位置    
+        return True
 
     """ 五次多项式插值得到分段路径，tips = 1时返回导数信息 """
     def get_path(self,p1s,p1l,p2s,p2l,tips):
