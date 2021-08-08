@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 
 from tool import *
 from cartesian_frenet_conversion import CartesianFrenetConverter
+from dynamic_obstacle import DynamicObstacle
 
 DRAW_ROBOT_FIG = False
 
@@ -100,19 +101,36 @@ class PlannerMap():
             # plt.show()
             save_fig()
 
-    def add_obstacle(self, ob, ob_dist):
-        ob = self.world_to_map(ob)
-        ob_to_ori = cal_dist(np.array([0.0,0.0]),ob)
-        # print(ob_to_ori)
-        if ob_to_ori < self.ignore_dist:
-            print(ob_to_ori)
-            s,l = self.converter.cartesian_to_frenet(ob[0],ob[1])
-            ob_point = np.array([s,l])
-            self.ob_list.append(ob_point)
-            self.ob_dist = max(self.ob_dist, ob_dist)
-            return True
-        else:
+    def add_obstacle(self, ob_pos, ob_dist,ob_vel):
+        ob_pos = self.world_to_map(ob_pos)
+        if ob_pos[0] < -2:  # 在车后方
             return False
+        if np.sum(np.abs(ob_vel)) < 0.001:        
+            ob_to_ori = cal_dist(self.ego_point,ob_pos)
+            # print(ob_to_ori)
+            if ob_to_ori < self.ignore_dist:
+                print("Static obstacle dist: %.4f" % ob_to_ori)
+                s,l = self.converter.cartesian_to_frenet(ob_pos[0],ob_pos[1])
+                ob_point = np.array([s,l])
+                self.ob_list.append(ob_point)
+                self.ob_dist = max(self.ob_dist, ob_dist)
+                return True
+            else:
+                return False
+        else: # 动态障碍物
+            ob_vel = self.world_to_map(ob_vel)
+            dy_ob = DynamicObstacle(ob_pos,ob_vel,ob_dist)
+            ob_to_ori = dy_ob.cal_min_dist(self.ego_point)
+            if ob_to_ori < self.ignore_dist:
+                print("Dynamic obstacle min_dist: %.4f" % ob_to_ori)
+                for ob_pos in dy_ob.ob_pos_list:
+                    s,l = self.converter.cartesian_to_frenet(ob_pos[0],ob_pos[1])
+                    ob_point = np.array([s,l])
+                    self.ob_list.append(ob_point)
+                    self.ob_dist = max(self.ob_dist, ob_dist)
+                return True
+            else:
+                return False
     
     def world_to_map(self, point):
         point = point - self.t

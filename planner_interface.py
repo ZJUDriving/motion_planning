@@ -26,7 +26,6 @@ class PlannerInterface():
         self._waypoint_buffer = _waypoint_buffer
         self._vehicle = _vehicle
         self.ob_list = ob_list
-        
     
     def run_step(self):
         d_s = 0.3
@@ -113,8 +112,10 @@ class PlannerInterface():
         self.p_map.add_ref_line(ref_line,l_width,n_l,n_s,cal_theta_ind)
         debug = self.world.debug
         for ob in self.ob_list:
+            ob_vel = ob.get_velocity()
+            ob_vel = to_point(ob_vel.x, ob_vel.y)
             ob_box, ob_rot = get_ob_box(self.world, ob)
-            res = self.p_map.add_obstacle(self.get_point(ob_box.location),math.sqrt(ob_box.extent.x**2+ob_box.extent.y**2))
+            res = self.p_map.add_obstacle(self.get_point(ob_box.location),math.sqrt(ob_box.extent.x**2+ob_box.extent.y**2),ob_vel)
             if res:
                 print("draw")
                 debug.draw_box(ob_box, ob_rot, 0.2, carla.Color(0,255,0,0),life_time=1.0)
