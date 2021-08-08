@@ -16,7 +16,7 @@ import carla
 from controller import VehiclePIDController
 from misc import distance_vehicle, draw_waypoints, compute_distance
 
-from path_planner import PlannerInterface
+from planner_interface import PlannerInterface
 from tool import RoadOption
 
 import math
@@ -38,9 +38,9 @@ class LocalPlanner(object):
     # (e.g. within 80% of total distance)
 
     # FPS used for dt
-    FPS = 20
+    
 
-    def __init__(self, agent):
+    def __init__(self, agent, fps):
         """
         :param agent: agent that regulates the vehicle
         :param vehicle: actor to apply to local planner logic onto
@@ -63,6 +63,7 @@ class LocalPlanner(object):
         self._buffer_size = 4
         self._waypoint_buffer = deque(maxlen=self._buffer_size)
 
+        self.FPS = fps
         self._init_controller()  # initializing controller
 
         self.ob_list = agent.ob_list
@@ -296,8 +297,10 @@ class LocalPlanner(object):
                                                     args_longitudinal=args_long)
 
         # print(self._target_speed)
+        self._target_speed = 15.0
         control = self._pid_controller.run_step(self._target_speed, self.target_waypoint)
-        control.brake = 0.0        
+        control.brake = 0.0   
+             
 
         # if debug:
         #     draw_waypoints(self._vehicle.get_world(),

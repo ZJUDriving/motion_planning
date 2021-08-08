@@ -34,9 +34,10 @@ IM_WIDTH = 640
 IM_HEIGHT = 480
 SHOW_CAM = False
 DRAW_ROAD_LINE = False
-DRAW_OB = True
+DRAW_OB = False
 TOWN = 'Town03' # 地图编号
 TEST_ID = 6     # 测试条件
+FPS = 20 # 50慢 # 20快
 
 
 class ObState(Enum):
@@ -115,7 +116,7 @@ try:
         # ob_pos = [180, -6.7, 1.0]
         # ob_ori = [0, 180, 0]
 
-    """ 连接世界，创建汽车和障碍物 """
+    """ 连接世界，创建汽车 """
     port = 2000
     client = carla.Client('localhost', port)  # 连接到服务器
     client.set_timeout(2.0)
@@ -134,7 +135,9 @@ try:
     actor_list.append(ego_car)
     print("[INFO] Create car")
 
-    if ob_state == ObState.ASSIGN:   
+    """ 创建障碍物 """
+    vehicles_list = []
+    if ob_state == ObState.ASSIGN:   # 创建人为指定位置的障碍物
         obstacle_bp = blueprint_library.find('vehicle.tesla.model3')    # 创建障碍物
         obstacle_bp.set_attribute('color', '0,0,0')
         ob_point = carla.Transform(carla.Location(x=ob_pos[0],y=ob_pos[1],z=ob_pos[2]),
@@ -148,9 +151,8 @@ try:
             brake = 1.0
         obstacle.apply_control(carla.VehicleControl(throttle=throttle, steer=0.0, brake=brake))
         actor_list.append(obstacle)
-        ob_list = obstacle
+        vehicles_list.append(obstacle)
         print("[INFO] Create obstacle")
-
     if SHOW_CAM and ob_state == ObState.ASSIGN:     # 加载相机
         camera_bp = blueprint_library.find('sensor.camera.rgb') 
         camera_bp.set_attribute('image_size_x', str(IM_WIDTH))
@@ -163,14 +165,11 @@ try:
         camera = world.spawn_actor(camera_bp, cam_point, obstacle, carla.AttachmentType.SpringArm)
         actor_list.append(camera)
         camera.listen(lambda data: process_img(data))
-
-    
-
-    if ob_state == ObState.RANDOM:
-        vehicles_id = spawn_npc()
-        vehicles_list = []
+    if ob_state == ObState.RANDOM:  # 创建随机自主运动的障碍物
+        vehicles_id = spawn_npc(FPS)
         for id in vehicles_id:
             vehicles_list.append(world.get_actor(id))
+    time.sleep(1.0)
 
     """ 初始绘制 """
     debug = world.debug
@@ -193,7 +192,7 @@ try:
         # for ob in ob_arr:
         #     debug.draw_box(ob,ob.rotation, 0.2, carla.Color(0,255,0,0),0) 
     if DRAW_OB and ob_state == ObState.ASSIGN: # 障碍物边框
-        time.sleep(0.5)
+        # time.sleep(0.5)
         # for vehicle in vehicles_list:
         #     ob_box, ob_rot = get_ob_box(world,vehicle)
         #     # ob_vertices = ob_box.get_world_vertices(carla.Transform())        # 得到障碍物的顶点
@@ -207,18 +206,16 @@ try:
         #     pos = ob_vertice
         #     debug.draw_line(pos, pos, 0.1, carla.Color(255,0,0,0), 0)
         debug.draw_box(ob_box, ob_rot, 0.2, carla.Color(0,255,0,0),0)
-        
     print("[INFO] Init debugger")
     
-
     """ 其他设置 """
-    agent = DriverlessAgent(ego_car, vehicles_list)   # 自动驾驶服务创建
+    agent = DriverlessAgent(ego_car, vehicles_list, FPS)   # 自动驾驶服务创建
     destination = carla.Location(x=target_pos[0],y=target_pos[1],z=target_pos[2])   
     agent.set_destination(agent.vehicle.get_location(), destination, clean=True)    # 设置目标点
     print("[INFO] Set destination")
 
     settings = world.get_settings()
-    settings.fixed_delta_seconds = 0.02#0.05
+    settings.fixed_delta_seconds = 1.0/FPS#0.02#0.05
     settings.synchronous_mode = True    # 同步模式
     world.apply_settings(settings)
     print("[INFO] World synchronous")

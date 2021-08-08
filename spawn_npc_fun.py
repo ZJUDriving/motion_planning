@@ -17,90 +17,22 @@ import argparse
 import logging
 from numpy import random
 
-def spawn_npc():
-    argparser = argparse.ArgumentParser(
-        description=__doc__)
-    argparser.add_argument(
-        '--host',
-        metavar='H',
-        default='127.0.0.1',
-        help='IP of the host server (default: 127.0.0.1)')
-    argparser.add_argument(
-        '-p', '--port',
-        metavar='P',
-        default=2000,
-        type=int,
-        help='TCP port to listen to (default: 2000)')
-    argparser.add_argument(
-        '-n', '--number-of-vehicles',
-        metavar='N',
-        default=10,
-        type=int,
-        help='number of vehicles (default: 10)')
-    argparser.add_argument(
-        '-w', '--number-of-walkers',
-        metavar='W',
-        default=50,
-        type=int,
-        help='number of walkers (default: 50)')
-    argparser.add_argument(
-        '--safe',
-        action='store_true',
-        help='avoid spawning vehicles prone to accidents')
-    argparser.add_argument(
-        '--filterv',
-        metavar='PATTERN',
-        default='vehicle.*',
-        help='vehicles filter (default: "vehicle.*")')
-    argparser.add_argument(
-        '--filterw',
-        metavar='PATTERN',
-        default='walker.pedestrian.*',
-        help='pedestrians filter (default: "walker.pedestrian.*")')
-    argparser.add_argument(
-        '--tm-port',
-        metavar='P',
-        default=8000,
-        type=int,
-        help='port to communicate with TM (default: 8000)')
-    argparser.add_argument(
-        '--sync',
-        action='store_true',
-        help='Synchronous mode execution')
-    argparser.add_argument(
-        '--hybrid',
-        action='store_true',
-        help='Enanble')
-    argparser.add_argument(
-        '-s', '--seed',
-        metavar='S',
-        type=int,
-        help='Random device seed')
-    argparser.add_argument(
-        '--car-lights-on',
-        action='store_true',
-        default=False,
-        help='Enanble car lights')
-    args = argparser.parse_args()
-
-    logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
-
+def spawn_npc(fps):
     vehicles_id = []
-    vehicles_list = []
     walkers_list = []
     all_id = []
     port = 2000
-    client = carla.Client('localhost', port)  
-    client.set_timeout(10.0)
+    tm_port = 8000
     synchronous_master = True
     random.seed(int(time.time()))
     number_of_vehicles = 80
-
-
-    # world = client.load_world('Town04')
+    
+    client = carla.Client('localhost', port)  
+    client.set_timeout(10.0)
     world = client.get_world()
+    # world = client.load_world('Town04')
 
-    traffic_manager = client.get_trafficmanager(args.tm_port)
+    traffic_manager = client.get_trafficmanager(tm_port)
     traffic_manager.set_global_distance_to_leading_vehicle(1.0)
     # if args.hybrid:
     # traffic_manager.set_hybrid_physics_mode(True)
@@ -114,7 +46,7 @@ def spawn_npc():
     if not settings.synchronous_mode:
         synchronous_master = True
         settings.synchronous_mode = True
-        settings.fixed_delta_seconds = 0.05
+        settings.fixed_delta_seconds = 1.0/fps
         world.apply_settings(settings)
     else:
         synchronous_master = False

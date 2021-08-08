@@ -1,270 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
-实现五次多项式DP，障碍物检查为静态且暴力
-初步实现车道切换，但比较暴力
-编写曲线类，将车道线利用五次多项式插值得到连续表达式
-编写Frenet坐标系转换类，得到一般曲线的Frenet转换
-DP从起点开始搜索，DP插值统一用Curve类（速度较慢）
+局部路径规划器
 """
 
-from posix import EX_UNAVAILABLE
-import carla
-import numpy as np
-import math
-import matplotlib.pyplot as plt
-import time
 
-# from scipy.interpolate import interp1d
-# from scipy.integrate import quad
+import numpy as np
+import matplotlib.pyplot as plt
+
 from tool import *
 from curve import QuinticPoly, Curve
-from cartesian_frenet_conversion import CartesianFrenetConverter
 
-STEP_COUNT = 0      # 路径更新下标
-FIG_COUNT = 0       # 图片下标
-SAVE_PATH = "../output/000"
-DRAW_DEBUG = True   # 在Carla中绘制结果
 DRAW_FRENET_FIG = False    # 绘制路径规划结果并保存图片
-DRAW_WORLD_FIG = False
-DRAW_ROBOT_FIG = False
 
 
-def save_fig():
-    global FIG_COUNT
-    mkdir(SAVE_PATH)
-    plt.savefig(SAVE_PATH + "/fig" + str(FIG_COUNT) + ".png")
-    FIG_COUNT = FIG_COUNT + 1
-
-
-""" 路径规划对外接口 """
-class PlannerInterface():
-    def __init__(self, world, _waypoint_buffer, _vehicle, ob_list):
-        self.world = world
-        self._waypoint_buffer = _waypoint_buffer
-        self._vehicle = _vehicle
-        self.ob_list = ob_list
-        
-    
-    def run_step(self):
-        d_s = 0.3
-        # print(self._waypoint_buffer)
-        command = Command.LANEFOLLOW
-        waypoint_ahead = []
-        # ob_box, ob_rot = get_ob_box(self.world, self.ob_list)
-        for i in range(len(self._waypoint_buffer)):
-            waypoint_ahead.append(self._waypoint_buffer[i][0])
-        global STEP_COUNT
-        print("----------- %d ------------" % STEP_COUNT)
-        if self._waypoint_buffer[1][1] == RoadOption.CHANGELANELEFT or \
-            self._waypoint_buffer[1][1] == RoadOption.CHANGELANERIGHT:
-            command = Command.CHANGELANELEFT
-            print("Change line [%d]" % STEP_COUNT)
-        if DRAW_WORLD_FIG:
-            plt.figure()
-            ego_pos = self.get_point(self._vehicle.get_transform().location)
-            plt.scatter(ego_pos[0],ego_pos[1],c='yellow')
-            for way_p in self._waypoint_buffer:
-                posi = self.get_point(way_p[0].transform.location)
-                print(way_p[1])
-                print(posi)
-                plt.scatter(posi[0],posi[1],c='blue')
-        
-        # 开始规划
-        # if command == Command.CHANGELANELEFT:
-        start_time = time.time()
-        self.coor_trans(waypoint_ahead,command)
-        self.planner = PathPlanner(self.p_map)
-        local_buff = self.planner.plan()
-        end_time = time.time()
-        print("[INFO] time_cost: %f" % (end_time - start_time))
-        if DRAW_DEBUG:
-            debug = self._vehicle.get_world().debug
-            for pos in local_buff:
-                # life_time=4.0
-                debug.draw_line(pos, pos, 0.5, carla.Color(255,0,0,0),0)
-                posi = self.get_point(pos)
-                plt.scatter(posi[0],posi[1],c='red')
-            for way_point in waypoint_ahead:
-                posi = self.get_point(way_point.transform.location)
-                plt.scatter(posi[0],posi[1],c='blue')
-            # plt.show()
-            # time.sleep(100)
-        if DRAW_WORLD_FIG:
-            for pos in local_buff:
-                posi = self.get_point(pos)
-                plt.scatter(posi[0],posi[1],c='red')
-            save_fig()
-        
-        STEP_COUNT = STEP_COUNT + 1
-        return local_buff
-        
-    """ 完成坐标转换 """
-    def coor_trans(self, waypoint_ahead, command):
-        l_width = 3.5   # 车道宽度
-        n_l = 7         # 车道纵向采点个数（奇数）
-        n_s = len(waypoint_ahead)   # 车道横向采点个数，不含无人车自身位置
-        d_l = l_width / (n_l-1)
-        s_map, l_map = [], []
-        # 根据车道线和当前位置计算坐标变换矩阵
-        if command == Command.CHANGELANELEFT:   # 如果切换车道，则车道参考线的方向从第二列点开始计算
-            cal_theta_ind = 1
-        else:
-            cal_theta_ind = 0
-
-        # st_theta = math.atan2(next_pos[1]-st_pos[1], next_pos[0]-st_pos[0])
-        # st_rot = np.array([[math.cos(st_theta),-math.sin(st_theta)], [math.sin(st_theta),math.cos(st_theta)]])
-        ego_pos = self.get_point(self._vehicle.get_transform().location)
-        ego_vec = self._vehicle.get_transform().rotation.get_forward_vector() 
-        ego_theta = math.atan2(ego_vec.y, ego_vec.x) 
-        ego_rot = np.array([[math.cos(ego_theta),-math.sin(ego_theta)], [math.sin(ego_theta),math.cos(ego_theta)]])
-        # 添加机器人坐标系下的地图信息
-        ref_line = []
-        ry_list_w = []
-        for way_point in waypoint_ahead:
-            pos = self.get_point(way_point.transform.location)
-            ref_line.append(pos)
-        self.p_map = PlannerMap(ego_rot,ego_pos)
-        self.p_map.add_ref_line(ref_line,l_width,n_l,n_s,cal_theta_ind)
-        debug = self.world.debug
-        for ob in self.ob_list:
-            ob_box, ob_rot = get_ob_box(self.world, ob)
-            res = self.p_map.add_obstacle(self.get_point(ob_box.location),math.sqrt(ob_box.extent.x**2+ob_box.extent.y**2))
-            if res:
-                print("draw")
-                debug.draw_box(ob_box, ob_rot, 0.2, carla.Color(0,255,0,0),life_time=1.0)
-        if DRAW_FRENET_FIG: # 绘制Frenet系采样地图
-            self.p_map.show()
-
-    def get_point(self, loc):
-        return to_point(loc.x, loc.y)
-
-
-""" 机器人坐标系地图与Frenet坐标系地图 """
-class PlannerMap():
-    def __init__(self, R, t):
-        self.R = R          # 机器人坐标系到世界坐标系的转移矩阵，TODO：真实情况下矩阵应该根据位置实时更新
-        self.t = t
-        self.final_point = []
-        self.ob_point = []
-        self.ob_list = []
-        self.ignore_dist = 20
-        self.ob_dist = 0.0
-        self.st_l = 0       # Frenet系下规划第一列下标     
-        
-    """ 添加车道参考线，同时创建Frenet栅格地图 """
-    def add_ref_line(self, ref_line, l_width, n_l, n_s, cal_theta_ind=0):
-        self.n_l = n_l
-        self.n_s = n_s
-        self.mid_l = int((self.n_l-1)/2)
-        self.l_width = l_width
-        rx_list = []
-        ry_list = []
-        for world_point in ref_line:
-            point = self.world_to_map(world_point)
-            rx_list.append(point[0])
-            ry_list.append(point[1])
-        # new_point, line_vec = self.extend_line(rx_list,ry_list,cal_theta_ind)
-        # rx_list.insert(0,new_point[0])
-        # ry_list.insert(0,new_point[1])
-        rx_list.insert(0,0.0)   # TODO:直接用当前位置作为Frenet系原点？
-        ry_list.insert(0,0.0)
-        line_vec = 0.0
-        # print(rx_list)
-        # plt.figure()
-        # 创建Frenet栅格地图
-        self.converter = CartesianFrenetConverter(0.0,0.0,np.array(rx_list),np.array(ry_list),line_vec)
-        so,lo = self.converter.cartesian_to_frenet(0.0,0.0)
-        self.ego_point = np.array([so,lo])
-        self.s_map = []
-        self.l_map = []
-        if DRAW_ROBOT_FIG:
-            # self.converter.show()
-            # plt.scatter(0.0,0.0,c='yellow')
-            plt.scatter(rx_list[0],ry_list[0],c='green')
-        for i in range(1,len(rx_list)):
-            rx = rx_list[i]
-            s = self.converter.get_s(rx)
-            s_line = s*np.ones((1,self.n_l))
-            l_line = np.linspace(0.0-self.l_width/2, 0.0+self.l_width/2, num=self.n_l).reshape(1,self.n_l)
-            self.s_map.append(s_line)
-            self.l_map.append(l_line)
-            # plt.scatter(rx,ry_list[i],c='green')
-            if DRAW_ROBOT_FIG:
-                plt.scatter(rx,ry_list[i],c='green')
-        self.s_map = np.concatenate(tuple(self.s_map),axis=0).reshape(self.n_s,self.n_l)
-        self.l_map = np.concatenate(tuple(self.l_map),axis=0).reshape(self.n_s,self.n_l)
-        # print(self.s_map)
-        # print(self.l_map)
-        if DRAW_ROBOT_FIG:
-            # plt.show()
-            save_fig()
-
-    def add_obstacle(self, ob, ob_dist):
-        ob = self.world_to_map(ob)
-        ob_to_ori = cal_dist(np.array([0.0,0.0]),ob)
-        # print(ob_to_ori)
-        if ob_to_ori < self.ignore_dist:
-            print(ob_to_ori)
-            s,l = self.converter.cartesian_to_frenet(ob[0],ob[1])
-            ob_point = np.array([s,l])
-            self.ob_list.append(ob_point)
-            self.ob_dist = max(self.ob_dist, ob_dist)
-            return True
-        else:
-            return False
-    
-    def world_to_map(self, point):
-        point = point - self.t
-        point = np.dot(self.R.transpose(),point.reshape(2,1)).reshape(2)
-        return point
-    
-    def map_to_world(self, point):
-        point = np.dot(self.R,point.reshape(2,1))
-        point = point.reshape(2) + self.t
-        return point
-
-    """ 根据已有参考线的起点进行延长至得到机器人投影点 """
-    def extend_line(self, rx_list, ry_list, cal_theta_ind):
-        va = rx_list[cal_theta_ind+1]-rx_list[cal_theta_ind]
-        vb = ry_list[cal_theta_ind+1]-ry_list[cal_theta_ind]
-        x0 = rx_list[0]
-        y0 = ry_list[0]
-        # print(va,vb)
-        # print(x0,y0)
-        t = -(va*x0+vb*y0)*1.0/(va**2+vb**2)
-        # print(t)
-        x = x0 + va*t
-        y = y0 + vb*t
-        # print(x,y)    
-        new_point = np.array([x,y])     # 根据机器人当前位置添加的延长线上的点
-        line_vec = vb / va              # 延长线斜率，作为五次多项式插值的中间点斜率
-        return new_point, line_vec
-
-    def show(self):
-        plt.figure()
-        # [1:self.n_s+1][:]
-        s_list = self.s_map.reshape(1,self.n_s*self.n_l)
-        l_list = self.l_map.reshape(1,self.n_s*self.n_l)
-        plt.scatter(s_list,l_list,c='blue')
-        plt.scatter(self.ego_point[0],self.ego_point[1],c='yellow')
-        # plt.scatter(self.final_point[0],self.final_point[1],c='yellow')
-        
-        for ob_point in self.ob_list:
-            # plt.scatter(self.start_point[0],self.start_point[1],c='red')
-            if abs(ob_point[1]) - self.ob_dist < self.l_width:     # 是否绘制障碍物
-                th = np.arange(0,2*math.pi,math.pi/20)
-                circle_x = ob_point[0] + self.ob_dist*np.cos(th)
-                circle_y = ob_point[1] + self.ob_dist*np.sin(th)
-                plt.scatter(ob_point[0],ob_point[1],c='green')
-                plt.scatter(circle_x,circle_y,c='green')
-        # plt.show()
-        # time.sleep(100)
-
-    
-
-
-""" 局部路径规划器 """
 class PathPlanner():
     def __init__(self, p_map):
         self.p_map = p_map
@@ -276,12 +25,13 @@ class PathPlanner():
         self.path_ind_list = []
         self.no_path_cost = 1e3
 
-
     def plan(self):
         # DP搜索
         tmp_l = 0   # self.p_map.st_l# int((self.p_map.n_l-1)/2)
         local_buff = []
         path_found = self.find_path()
+        if DRAW_FRENET_FIG: # 绘制Frenet系采样地图
+            self.p_map.show()
         if path_found:
             # print(self.cost_map)
             refer_path = np.zeros((2,self.p_map.n_s+1)) # 选取的路径点
@@ -300,7 +50,7 @@ class PathPlanner():
                 for j in range(len(ss)):
                     rx, ry = self.p_map.converter.frenet_to_cartesian(ss[j],ll[j])
                     node = self.p_map.map_to_world(to_point(rx, ry))
-                    local_buff.append(carla.Location(x=node[0],y=node[1]))
+                    local_buff.append(node)
                 if DRAW_FRENET_FIG:
                     plt.plot(ss,ll,c='red')
             if DRAW_FRENET_FIG:

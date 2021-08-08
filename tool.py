@@ -6,7 +6,17 @@ import numpy as np
 import carla
 import os
 
+import matplotlib.pyplot as plt
 from enum import Enum
+
+
+FIG_COUNT = 0       # 图片下标
+SAVE_PATH = "../output/000"
+def save_fig():
+    global FIG_COUNT
+    mkdir(SAVE_PATH)
+    plt.savefig(SAVE_PATH + "/fig" + str(FIG_COUNT) + ".png")
+    FIG_COUNT = FIG_COUNT + 1
 
 def get_ob_box(world, ob):
     world_snapshot = world.get_snapshot()

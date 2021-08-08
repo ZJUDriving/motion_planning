@@ -17,7 +17,7 @@ from tool import RoadOption
 
 class DriverlessAgent():
 
-    def __init__(self, vehicle, ob_list, ignore_traffic_light=False, behavior='normal'):
+    def __init__(self, vehicle, ob_list, fps, ignore_traffic_light=False, behavior='normal'):
         """
         Constructor method.
 
@@ -41,7 +41,7 @@ class DriverlessAgent():
 
         self.vehicle = vehicle
         self.ignore_traffic_light = ignore_traffic_light
-        self._local_planner = LocalPlanner(self)
+        self._local_planner = LocalPlanner(self,fps)
         self._grp = None
         self.look_ahead_steps = 0
 
@@ -59,6 +59,7 @@ class DriverlessAgent():
         self.min_speed = 5
         self.behavior = None
         self._sampling_resolution = 4.5
+        self.FPS = fps
 
         if behavior == 'cautious':
             self.behavior = Cautious()
