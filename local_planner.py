@@ -297,7 +297,7 @@ class LocalPlanner(object):
                                                     args_longitudinal=args_long)
 
         # print(self._target_speed)
-        self._target_speed = 15.0
+        # self._target_speed = 15.0
         control = self._pid_controller.run_step(self._target_speed, self.target_waypoint)
         control.brake = 0.0   
              

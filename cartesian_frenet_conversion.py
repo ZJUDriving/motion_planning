@@ -70,8 +70,8 @@ class CartesianFrenetConverter:
         return rx,ry
 
     def show(self):
-        plt.figure()
-        rx_list = np.arange(self.rx_ori,self.rx_max,self.d_x)
+        # plt.figure()
+        rx_list = np.arange(self.rx_ori,self.rx_max+self.d_x,self.d_x)
         ry_list = self.ref_curve.calc_point_arr(rx_list,0)
         plt.plot(rx_list,ry_list)
         

@@ -24,6 +24,7 @@ class PlannerMap():
         self.ignore_dist = 20
         self.ob_dist = 0.0
         self.st_l = 0       # Frenet系下规划第一列下标     
+        self.d_s = 8
         
     """ 添加车道参考线，同时创建Frenet栅格地图 """
     def add_ref_line(self, ref_line, l_width, n_l, n_s, cal_theta_ind=0):
@@ -46,15 +47,40 @@ class PlannerMap():
         # print(rx_list)
         # plt.figure()
         # 创建Frenet栅格地图
+        self.create_frenet_map(rx_list, ry_list, line_vec)
+
+    def create_frenet_map(self, rx_list, ry_list, line_vec):
         self.converter = CartesianFrenetConverter(0.0,0.0,np.array(rx_list),np.array(ry_list),line_vec)
         so,lo = self.converter.cartesian_to_frenet(0.0,0.0)
         self.ego_point = np.array([so,lo])
         self.s_map = []
         self.l_map = []
         if DRAW_ROBOT_FIG:
-            # self.converter.show()
+            plt.figure()
+            self.converter.show()
             # plt.scatter(0.0,0.0,c='yellow')
-            plt.scatter(rx_list[0],ry_list[0],c='green')
+            for i in range(len(rx_list)):
+                plt.scatter(rx_list[i],ry_list[i],c='green')
+        end_s = self.converter.get_s(rx_list[-1])
+        ss = self.d_s
+        s_list = []
+        while True:
+            s_list.append(ss)
+            ss += self.d_s
+            if ss+self.d_s/2 >= end_s:
+                s_list.append(end_s)
+                break
+        self.n_s = len(s_list)
+        for s in s_list:
+            s_line = s*np.ones((1,self.n_l))
+            l_line = np.linspace(0.0-self.l_width/2, 0.0+self.l_width/2, num=self.n_l).reshape(1,self.n_l)
+            self.s_map.append(s_line)
+            self.l_map.append(l_line)
+            # plt.scatter(rx,ry_list[i],c='green')
+            if DRAW_ROBOT_FIG:
+                rx,ry = self.converter.frenet_to_cartesian(s,0.0)
+                plt.scatter(rx,ry,c='red')
+        """
         for i in range(1,len(rx_list)):
             rx = rx_list[i]
             s = self.converter.get_s(rx)
@@ -65,6 +91,7 @@ class PlannerMap():
             # plt.scatter(rx,ry_list[i],c='green')
             if DRAW_ROBOT_FIG:
                 plt.scatter(rx,ry_list[i],c='green')
+        """
         self.s_map = np.concatenate(tuple(self.s_map),axis=0).reshape(self.n_s,self.n_l)
         self.l_map = np.concatenate(tuple(self.l_map),axis=0).reshape(self.n_s,self.n_l)
         # print(self.s_map)

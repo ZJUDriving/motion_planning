@@ -27,12 +27,15 @@ class Curve:
         self.t_bios = t_bios
         # 简单起见，v和a全取0.0
         # 自适应得到v
-        # v = 1.0*(x[2:]-x[:-2]) / (T[1:]+T[:-1])
-        # v = np.insert(v,0,vec)
-        # v = np.append(v,vec)
+        v = 1.0*(x[2:]-x[:-2]) / (T[1:]+T[:-1])
+        v = np.insert(v,0,vec)
+        v = np.append(v,vec)
+        a = 1.0*(v[2:]-v[:-2]) / (T[1:]+T[:-1])
+        a = np.insert(a,0,0.0)
+        a = np.append(a,0.0)
         for i in range(self.n):
-            self.curve_list.append(QuinticPoly(x[i],vec,0.0,x[i+1],vec,0.0,T[i]))
-            # self.curve_list.append(QuinticPoly(x[i],v[i],a[i],x[i+1],v[i+1],a[i+1],T[i]))
+            # self.curve_list.append(QuinticPoly(x[i],vec,0.0,x[i+1],vec,0.0,T[i]))
+            self.curve_list.append(QuinticPoly(x[i],v[i],a[i],x[i+1],v[i+1],a[i+1],T[i]))
 
     def calc_point_arr(self, t_arr, order):
         t_arr = t_arr - self.t_bios

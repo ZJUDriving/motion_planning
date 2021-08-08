@@ -4,6 +4,7 @@
 局部路径规划器
 """
 
+# TODO:DP计算每条样条轨迹的cost时，v和a通过前后得到（目前直接给0）
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -34,6 +35,35 @@ class PathPlanner():
             self.p_map.show()
         if path_found:
             # print(self.cost_map)
+            path_s = []
+            path_l = []
+            path_s.append(self.p_map.ego_point[0])
+            path_l.append(self.p_map.ego_point[1])
+            for s in range(self.p_map.n_s):
+                tmp_l = self.path_ind_list[s]
+                path_s.append(self.p_map.s_map[s][tmp_l])
+                path_l.append(self.p_map.l_map[s][tmp_l])
+                if DRAW_FRENET_FIG:    # 选取的路径点
+                    plt.scatter(path_s[-1],path_l[-1],c='red')
+
+            send_num = int(self.p_map.n_s/2)+1    # 除无人车位置外，发送的路径点个数（插值前）
+            path_s = path_s[:send_num+1]
+            path_l = path_l[:send_num+1]
+            path_s = np.array(tuple(path_s))
+            path_l = np.array(tuple(path_l))
+            
+            curve_path = Curve(np.diff(path_s),path_s[0],self.d_s,path_l,0.0)
+            
+            ss = np.arange(path_s[0],path_s[-1],self.d_s)
+            ll = curve_path.calc_point_arr(ss,0)
+            for j in range(len(ss)):
+                rx, ry = self.p_map.converter.frenet_to_cartesian(ss[j],ll[j])
+                node = self.p_map.map_to_world(to_point(rx, ry))
+                local_buff.append(node)
+            if DRAW_FRENET_FIG:
+                plt.plot(ss,ll,c='red')
+            
+            """
             refer_path = np.zeros((2,self.p_map.n_s+1)) # 选取的路径点
             refer_path[0][0] = self.p_map.ego_point[0]  # 无人车的位置
             refer_path[1][0] = self.p_map.ego_point[1]
@@ -44,8 +74,8 @@ class PathPlanner():
                 if DRAW_FRENET_FIG:    # 选取的路径点
                     plt.scatter(refer_path[0][s+1],refer_path[1][s+1],c='red')
             # 五次样条插值
-            
-            for i in range(2):
+            send_s_n = int(self.p_map.n_s/2)+1
+            for i in range(send_s_n):
                 ss, ll = self.get_path(refer_path[0][i],refer_path[1][i],refer_path[0][i+1],refer_path[1][i+1],0)
                 for j in range(len(ss)):
                     rx, ry = self.p_map.converter.frenet_to_cartesian(ss[j],ll[j])
@@ -53,6 +83,7 @@ class PathPlanner():
                     local_buff.append(node)
                 if DRAW_FRENET_FIG:
                     plt.plot(ss,ll,c='red')
+            """
             if DRAW_FRENET_FIG:
                 save_fig()
             # plt.show()
