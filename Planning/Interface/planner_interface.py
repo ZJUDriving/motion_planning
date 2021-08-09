@@ -13,7 +13,7 @@ import time
 
 from Utils.tool import *
 from Planning.DP_Path.path_planner import PathPlanner
-from Planning.DP_Path.planner_map import PlannerMap
+from Planning.DP_Path.sl_map import SLMap
 
 STEP_COUNT = 0      # 路径更新下标
 DRAW_DEBUG = True   # 在Carla中绘制结果
@@ -55,9 +55,9 @@ class PlannerInterface():
         # if command == Command.CHANGELANELEFT:
         start_time = time.time()
         self.coor_trans(waypoint_ahead, command)
-        self.planner = PathPlanner(self.p_map)
+        self.planner = PathPlanner(self.sl_map)
         path_buff = self.planner.plan()
-        path_buff = self.p_map.frenet_to_world(path_buff)
+        path_buff = self.sl_map.frenet_to_world(path_buff)
         end_time = time.time()
         print("[INFO] time_cost: %f" % (end_time - start_time))
         if DRAW_WORLD_FIG:
@@ -109,14 +109,14 @@ class PlannerInterface():
         for way_point in waypoint_ahead:
             pos = self.get_point(way_point.transform.location)
             ref_line.append(pos)
-        self.p_map = PlannerMap(ego_rot,ego_pos)
-        self.p_map.add_ref_line(ref_line,l_width,n_l,n_s,cal_theta_ind)
+        self.sl_map = SLMap(ego_rot,ego_pos)
+        self.sl_map.add_ref_line(ref_line,l_width,n_l,n_s,cal_theta_ind)
         debug = self.world.debug
         for ob in self.ob_list:
             ob_vel = ob.get_velocity()
             ob_vel = to_point(ob_vel.x, ob_vel.y)
             ob_box, ob_rot = get_ob_box(self.world, ob)
-            res = self.p_map.add_obstacle(self.get_point(ob_box.location),math.sqrt(ob_box.extent.x**2+ob_box.extent.y**2),ob_vel)
+            res = self.sl_map.add_obstacle(self.get_point(ob_box.location),math.sqrt(ob_box.extent.x**2+ob_box.extent.y**2),ob_vel)
             if res:
                 print("draw")
                 debug.draw_box(ob_box, ob_rot, 0.2, carla.Color(0,255,0,0),life_time=1.0)

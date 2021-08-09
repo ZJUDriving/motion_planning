@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """ 
-机器人坐标系地图与Frenet坐标系地图 
+SL地图 
 """
-
 
 import numpy as np
 import math
@@ -16,7 +15,7 @@ from Model.world_robot_conversion import WorldRobotConverter
 
 DRAW_ROBOT_FIG = False
 
-class PlannerMap():
+class SLMap():
     def __init__(self, R, t):
         self.WRC = WorldRobotConverter(R,t) 
         # 机器人坐标系到世界坐标系的转移矩阵，TODO：真实情况下矩阵应该根据位置实时更新
