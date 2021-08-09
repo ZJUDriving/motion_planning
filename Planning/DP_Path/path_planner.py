@@ -9,8 +9,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from tool import *
-from curve import QuinticPoly, Curve
+from Utils.tool import *
+from Model.curve import QuinticPoly, Curve
 
 DRAW_FRENET_FIG = False    # 绘制路径规划结果并保存图片
 

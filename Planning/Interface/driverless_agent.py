@@ -1,19 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from os import times
-import random
-import numpy as np
 import carla
-import time
-
 from local_planner import LocalPlanner
 from global_route_planner import GlobalRoutePlanner
 from global_route_planner_dao import GlobalRoutePlannerDAO
-from types_behavior import Cautious, Aggressive, Normal
-
-from misc import get_speed, positive
-from tool import RoadOption
+from Utils.types_behavior import Cautious, Aggressive, Normal
+from Utils.misc import get_speed, positive
+from Utils.tool import RoadOption
 
 class DriverlessAgent():
 

@@ -5,6 +5,7 @@
 import glob
 import os
 import sys
+from Planning.Interface.driverless_agent import DriverlessAgent
 try:
     sys.path.append(glob.glob('./robot/driverless/CARLA/PythonAPI/carla/dist/carla-*%d.%d-%s.egg' % (
         sys.version_info.major,
@@ -25,10 +26,10 @@ from enum import Enum
 import numpy as np
 import cv2
 # from agents.navigation.behavior_agent import BehaviorAgent  # pylint: disable=import-error
-from driverless_agent import DriverlessAgent
 
-from tool import get_ob_box
-from spawn_npc_fun import spawn_npc
+
+from Utils.tool import get_ob_box
+from Utils.spawn_npc_fun import spawn_npc
 
 IM_WIDTH = 640
 IM_HEIGHT = 480

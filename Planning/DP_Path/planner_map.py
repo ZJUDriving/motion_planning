@@ -9,9 +9,9 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 
-from tool import *
-from cartesian_frenet_conversion import CartesianFrenetConverter
-from dynamic_obstacle import DynamicObstacle
+from Utils.tool import *
+from Model.cartesian_frenet_conversion import CartesianFrenetConverter
+from Model.dynamic_obstacle import DynamicObstacle
 
 DRAW_ROBOT_FIG = False
 

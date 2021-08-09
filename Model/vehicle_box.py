@@ -4,7 +4,7 @@
 车辆box
 """
 
-from tool import cal_dist
+from Utils.tool import cal_dist
 
 class VehicleBox():
     def __init__(self, pos, velocity, radius):

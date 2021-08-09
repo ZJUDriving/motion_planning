@@ -11,15 +11,12 @@
 low-level waypoint following based on PID controllers. """
 
 from collections import deque
-
-import carla
-from controller import VehiclePIDController
-from misc import distance_vehicle, draw_waypoints, compute_distance
-
-from planner_interface import PlannerInterface
-from tool import RoadOption
-
 import math
+import carla
+from Tracking.controller import VehiclePIDController
+from planner_interface import PlannerInterface
+from Utils.misc import distance_vehicle, draw_waypoints, compute_distance
+from Utils.tool import RoadOption
 
 
 class LocalPlanner(object):

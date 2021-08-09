@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import math
 import numpy as np
-from tool import cal_dist_arr
+from Utils.tool import cal_dist_arr
 
 # TODO:笛卡尔空间下轨迹那个维度的自变量x，如果是车头不垂直应该问题不大？
 # TODO:把量化间隔固定，直接存储整条曲线？
