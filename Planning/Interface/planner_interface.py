@@ -54,22 +54,23 @@ class PlannerInterface():
         # 开始规划
         # if command == Command.CHANGELANELEFT:
         start_time = time.time()
-        self.coor_trans(waypoint_ahead,command)
+        self.coor_trans(waypoint_ahead, command)
         self.planner = PathPlanner(self.p_map)
-        local_buff = self.planner.plan()
+        path_buff = self.planner.plan()
+        path_buff = self.p_map.frenet_to_world(path_buff)
         end_time = time.time()
         print("[INFO] time_cost: %f" % (end_time - start_time))
         if DRAW_WORLD_FIG:
-            for node in local_buff:
+            for node in path_buff:
                 plt.scatter(node[0],node[1],c='red')
             save_fig()
 
-        local_buff_carla = []
-        for node in local_buff:
-            local_buff_carla.append(carla.Location(x=node[0],y=node[1]))
+        path_buff_carla = []
+        for node in path_buff:
+            path_buff_carla.append(carla.Location(x=node[0],y=node[1]))
         if DRAW_DEBUG:
             debug = self._vehicle.get_world().debug
-            for pos in local_buff_carla:
+            for pos in path_buff_carla:
                 # life_time=4.0
                 debug.draw_line(pos, pos, 0.5, carla.Color(255,0,0,0),0)
                 posi = self.get_point(pos)
@@ -81,7 +82,7 @@ class PlannerInterface():
             # time.sleep(100)
         
         STEP_COUNT = STEP_COUNT + 1
-        return local_buff_carla
+        return path_buff_carla
         
     """ 完成坐标转换 """
     def coor_trans(self, waypoint_ahead, command):

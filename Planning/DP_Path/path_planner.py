@@ -57,9 +57,7 @@ class PathPlanner():
             ss = np.arange(path_s[0],path_s[-1],self.d_s)
             ll = curve_path.calc_point_arr(ss,0)
             for j in range(len(ss)):
-                rx, ry = self.p_map.converter.frenet_to_cartesian(ss[j],ll[j])
-                node = self.p_map.map_to_world(to_point(rx, ry))
-                local_buff.append(node)
+                local_buff.append(to_point(ss[j],ll[j]))
             if DRAW_FRENET_FIG:
                 plt.plot(ss,ll,c='red')
             

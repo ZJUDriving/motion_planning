@@ -12,13 +12,14 @@ import matplotlib.pyplot as plt
 from Utils.tool import *
 from Model.cartesian_frenet_conversion import CartesianFrenetConverter
 from Model.dynamic_obstacle import DynamicObstacle
+from Model.world_robot_conversion import WorldRobotConverter
 
 DRAW_ROBOT_FIG = False
 
 class PlannerMap():
     def __init__(self, R, t):
-        self.R = R          # 机器人坐标系到世界坐标系的转移矩阵，TODO：真实情况下矩阵应该根据位置实时更新
-        self.t = t
+        self.WRC = WorldRobotConverter(R,t) 
+        # 机器人坐标系到世界坐标系的转移矩阵，TODO：真实情况下矩阵应该根据位置实时更新
         self.final_point = []
         self.ob_point = []
         self.ob_list = []
@@ -36,7 +37,7 @@ class PlannerMap():
         rx_list = []
         ry_list = []
         for world_point in ref_line:
-            point = self.world_to_map(world_point)
+            point = self.WRC.world_to_robot(world_point)
             rx_list.append(point[0])
             ry_list.append(point[1])
         # new_point, line_vec = self.extend_line(rx_list,ry_list,cal_theta_ind)
@@ -102,7 +103,7 @@ class PlannerMap():
             save_fig()
 
     def add_obstacle(self, ob_pos, ob_dist,ob_vel):
-        ob_pos = self.world_to_map(ob_pos)
+        ob_pos = self.WRC.world_to_robot(ob_pos)
         if ob_pos[0] < -2:  # 在车后方
             return False
         if np.sum(np.abs(ob_vel)) < 0.001:        
@@ -118,7 +119,7 @@ class PlannerMap():
             else:
                 return False
         else: # 动态障碍物
-            ob_vel = self.world_to_map(ob_vel)
+            ob_vel = self.WRC.world_to_robot(ob_vel)
             dy_ob = DynamicObstacle(ob_pos,ob_vel,ob_dist)
             ob_to_ori = dy_ob.cal_min_dist(self.ego_point)
             if ob_to_ori < self.ignore_dist:
@@ -131,16 +132,6 @@ class PlannerMap():
                 return True
             else:
                 return False
-    
-    def world_to_map(self, point):
-        point = point - self.t
-        point = np.dot(self.R.transpose(),point.reshape(2,1)).reshape(2)
-        return point
-    
-    def map_to_world(self, point):
-        point = np.dot(self.R,point.reshape(2,1))
-        point = point.reshape(2) + self.t
-        return point
 
     """ 根据已有参考线的起点进行延长至得到机器人投影点 """
     def extend_line(self, rx_list, ry_list, cal_theta_ind):
@@ -158,6 +149,14 @@ class PlannerMap():
         new_point = np.array([x,y])     # 根据机器人当前位置添加的延长线上的点
         line_vec = vb / va              # 延长线斜率，作为五次多项式插值的中间点斜率
         return new_point, line_vec
+
+    def frenet_to_world(self, point_list):
+        world_point_list = []
+        for point in point_list:
+            rx, ry = self.converter.frenet_to_cartesian(point[0],point[1])
+            node = self.WRC.robot_to_world(to_point(rx, ry))
+            world_point_list.append(node)
+        return world_point_list
 
     def show(self):
         plt.figure()
