@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 from Utils.tool import *
 from Model.cartesian_frenet_conversion import CartesianFrenetConverter
-from Model.dynamic_obstacle import DynamicObstacle
+from Model.obstacle import *
 from Model.world_robot_conversion import WorldRobotConverter
 
 DRAW_ROBOT_FIG = False
@@ -22,10 +22,12 @@ class SLMap():
         self.final_point = []
         self.ob_point = []
         self.ob_list = []
+        self.dy_ob_frame = []
         self.ignore_dist = 20
         self.ob_dist = 0.0
         self.st_l = 0       # Frenet系下规划第一列下标     
         self.d_s = 8
+        self.dynamic_ob = []
         
     """ 添加车道参考线，同时创建Frenet栅格地图 """
     def add_ref_line(self, ref_line, l_width, n_l, n_s, cal_theta_ind=0):
@@ -103,11 +105,10 @@ class SLMap():
 
     def add_obstacle(self, ob_pos, ob_dist,ob_vel):
         ob_pos = self.WRC.world_to_robot(ob_pos)
-        if ob_pos[0] < -2:  # 在车后方
+        if ob_pos[0] < -1:  # x<-1，即在车后方
             return False
         if np.sum(np.abs(ob_vel)) < 0.001:        
             ob_to_ori = cal_dist(self.ego_point,ob_pos)
-            # print(ob_to_ori)
             if ob_to_ori < self.ignore_dist:
                 print("Static obstacle dist: %.4f" % ob_to_ori)
                 s,l = self.converter.cartesian_to_frenet(ob_pos[0],ob_pos[1])
@@ -123,11 +124,14 @@ class SLMap():
             ob_to_ori = dy_ob.cal_min_dist(self.ego_point)
             if ob_to_ori < self.ignore_dist:
                 print("Dynamic obstacle min_dist: %.4f" % ob_to_ori)
+                ob_trajectory = ObstacleTrajectory(ob_dist)
                 for ob_pos in dy_ob.ob_pos_list:
                     s,l = self.converter.cartesian_to_frenet(ob_pos[0],ob_pos[1])
                     ob_point = np.array([s,l])
+                    ob_trajectory.ob_pos_list.append(ob_point)
                     self.ob_list.append(ob_point)
                     self.ob_dist = max(self.ob_dist, ob_dist)
+                self.dynamic_ob.append(ob_trajectory)
                 return True
             else:
                 return False

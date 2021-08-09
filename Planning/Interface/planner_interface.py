@@ -12,12 +12,16 @@ import matplotlib.pyplot as plt
 import time
 
 from Utils.tool import *
+from Model.obstacle import *
 from Planning.DP_Path.path_planner import PathPlanner
 from Planning.DP_Path.sl_map import SLMap
+from Planning.DP_Speed.st_map import STMap
+
 
 STEP_COUNT = 0      # 路径更新下标
 DRAW_DEBUG = True   # 在Carla中绘制结果
 DRAW_WORLD_FIG = False
+DRAW_ST_FIG = True
 
 
 class PlannerInterface():
@@ -26,13 +30,12 @@ class PlannerInterface():
         self._waypoint_buffer = _waypoint_buffer
         self._vehicle = _vehicle
         self.ob_list = ob_list
+        self.dynamic_ob = []
+        self.static_ob = []
     
     def run_step(self):
-        d_s = 0.3
-        # print(self._waypoint_buffer)
         command = Command.LANEFOLLOW
         waypoint_ahead = []
-        # ob_box, ob_rot = get_ob_box(self.world, self.ob_list)
         for i in range(len(self._waypoint_buffer)):
             waypoint_ahead.append(self._waypoint_buffer[i][0])
         global STEP_COUNT
@@ -54,17 +57,31 @@ class PlannerInterface():
         # 开始规划
         # if command == Command.CHANGELANELEFT:
         start_time = time.time()
-        self.coor_trans(waypoint_ahead, command)
-        self.planner = PathPlanner(self.sl_map)
-        path_buff = self.planner.plan()
-        path_buff = self.sl_map.frenet_to_world(path_buff)
+        self.coor_trans(waypoint_ahead, command)    # 完成坐标转换，创建SL图
+        self.planner = PathPlanner(self.sl_map)     # 初始化路径规划器
+        path_buff = self.planner.plan()             # 进行路径规划
+
+        if not path_buff:   # 未找到路径
+            return []
+
+        end_point = path_buff[-1]
+        print(end_point)
+        plan_time = 5
+        self.st_map = STMap(end_point[0], plan_time)
+        self.st_map.add_obstacle(path_buff, [], self.sl_map.dynamic_ob)
+        path_buff = self.sl_map.frenet_to_world(path_buff)  # 规划路径转换到世界坐标系下
         end_time = time.time()
         print("[INFO] time_cost: %f" % (end_time - start_time))
+
+        if DRAW_ST_FIG:
+            plt.figure()
+            self.st_map.show()
+            save_fig()
+        
         if DRAW_WORLD_FIG:
             for node in path_buff:
                 plt.scatter(node[0],node[1],c='red')
             save_fig()
-
         path_buff_carla = []
         for node in path_buff:
             path_buff_carla.append(carla.Location(x=node[0],y=node[1]))
@@ -80,17 +97,14 @@ class PlannerInterface():
                 plt.scatter(posi[0],posi[1],c='blue')
             # plt.show()
             # time.sleep(100)
-        
         STEP_COUNT = STEP_COUNT + 1
         return path_buff_carla
         
-    """ 完成坐标转换 """
+    """ 完成坐标转换，创建SL图 """
     def coor_trans(self, waypoint_ahead, command):
         l_width = 3.5   # 车道宽度
         n_l = 7         # 车道纵向采点个数（奇数）
         n_s = len(waypoint_ahead)   # 车道横向采点个数，不含无人车自身位置
-        d_l = l_width / (n_l-1)
-        s_map, l_map = [], []
         # 根据车道线和当前位置计算坐标变换矩阵
         if command == Command.CHANGELANELEFT:   # 如果切换车道，则车道参考线的方向从第二列点开始计算
             cal_theta_ind = 1
@@ -116,9 +130,16 @@ class PlannerInterface():
             ob_vel = ob.get_velocity()
             ob_vel = to_point(ob_vel.x, ob_vel.y)
             ob_box, ob_rot = get_ob_box(self.world, ob)
-            res = self.sl_map.add_obstacle(self.get_point(ob_box.location),math.sqrt(ob_box.extent.x**2+ob_box.extent.y**2),ob_vel)
-            if res:
-                print("draw")
+            ob_pos = self.get_point(ob_box.location)
+            ob_dist = math.sqrt(ob_box.extent.x**2+ob_box.extent.y**2)
+            is_near_ego_car = self.sl_map.add_obstacle(ob_pos,ob_dist,ob_vel)
+            # if is_near_ego_car:
+                # if check_static(ob_vel):
+                #     self.static_ob.append(VehicleBox(ob_pos,ob_vel,ob_dist))
+                # else:
+                #     self.dynamic_ob.append(DynamicObstacle(ob_pos,ob_vel,ob_dist))
+            if DRAW_DEBUG and is_near_ego_car:
+                # print("draw")
                 debug.draw_box(ob_box, ob_rot, 0.2, carla.Color(0,255,0,0),life_time=1.0)
         
     def get_point(self, loc):

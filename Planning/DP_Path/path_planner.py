@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from Utils.tool import *
 from Model.curve import QuinticPoly, Curve
 
-DRAW_FRENET_FIG = False    # 绘制路径规划结果并保存图片
+DRAW_FRENET_FIG = True    # 绘制路径规划结果并保存图片
 
 
 class PathPlanner():
@@ -24,7 +24,7 @@ class PathPlanner():
         self.d_s = 0.3      # 插值间隔
         self.w_d = 0.5      # cost线性组合系数
         self.path_ind_list = []
-        self.no_path_cost = 1e3
+        self.no_path_cost = 1e4
 
     def plan(self):
         # DP搜索
@@ -46,9 +46,9 @@ class PathPlanner():
                 if DRAW_FRENET_FIG:    # 选取的路径点
                     plt.scatter(path_s[-1],path_l[-1],c='red')
 
-            send_num = int(self.sl_map.n_s/2)+1    # 除无人车位置外，发送的路径点个数（插值前）
-            path_s = path_s[:send_num+1]
-            path_l = path_l[:send_num+1]
+            # send_num = int(self.sl_map.n_s/2)+1    # 除无人车位置外，发送的路径点个数（插值前）
+            # path_s = path_s[:send_num+1]
+            # path_l = path_l[:send_num+1]
             path_s = np.array(tuple(path_s))
             path_l = np.array(tuple(path_l))
             
@@ -107,12 +107,13 @@ class PathPlanner():
                 dist, min_p = cal_dist_arr(arr,ob_point)
                 tmp_dist.append(dist)
             min_dist = min(tmp_dist)
-        else:
-            min_dist = 10000
-        if min_dist < self.sl_map.ob_dist:
-            ob_cost = 30000
-        else:
+            if min_dist < self.sl_map.ob_dist:
+                ob_cost = 3*self.no_path_cost
+            else: 
+                ob_cost = 0
+        else:   # 不存在障碍物
             ob_cost = 0
+            
         return self.w_d*guide_cost + (1-self.w_d)*smooth_cost + ob_cost
 
     """ DP递推搜索最优路径组合 """

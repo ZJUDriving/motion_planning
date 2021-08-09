@@ -18,6 +18,9 @@ def save_fig():
     plt.savefig(SAVE_PATH + "/fig" + str(FIG_COUNT) + ".png")
     FIG_COUNT = FIG_COUNT + 1
 
+def check_static(vel):
+    return np.sum(np.abs(vel)) < 0.001
+
 def get_ob_box(world, ob):
     world_snapshot = world.get_snapshot()
     for actor_snapshot in world_snapshot:
