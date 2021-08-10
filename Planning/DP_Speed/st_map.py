@@ -4,14 +4,14 @@
 SL地图 
 """
 
-import numpy as np
 import math
 import matplotlib.pyplot as plt
 from Model.obstacle import VehicleBox
 
 
 class STMap():
-    def __init__(self, s_end, t_end=5):
+    def __init__(self, converter, s_end, t_end=5):
+        self.converter = converter
         self.ds = 2
         self.dt = 0.5
         self.n_s = int(math.ceil(1.0*s_end/self.ds))+1
@@ -41,7 +41,7 @@ class STMap():
                     ob_state.s_up.append(s_up)
             self.ob_mat.append(ob_state)
 
-    def show(self):
+    def draw_st_fig(self):
         for i in range(self.n_t):
             ob = self.ob_mat[i]
             for j in range(self.n_s):
@@ -53,9 +53,9 @@ class STMap():
                         ob_flag = True
                         break
                 if ob_flag:
-                    plt.scatter(t, s, c='red')
-                else:
                     plt.scatter(t, s, c='green')
+                else:
+                    plt.scatter(t, s, c='blue')
                 
                 
 

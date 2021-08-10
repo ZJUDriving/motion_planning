@@ -9,10 +9,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from Utils.tool import *
+from Utils.tool import to_point, save_fig, cal_dist_arr, DRAW_SL_FIG
 from Model.curve import QuinticPoly, Curve
-
-DRAW_FRENET_FIG = False    # 绘制路径规划结果并保存图片
 
 
 class PathPlanner():
@@ -21,7 +19,7 @@ class PathPlanner():
         self.init_ind = -2  # 储存起始下标
         self.cost_map = np.zeros((self.sl_map.n_s,self.sl_map.n_l))
         self.index_map = self.init_ind*np.ones((self.sl_map.n_s,self.sl_map.n_l))
-        self.d_s = 0.3      # 插值间隔
+        self.d_s = 0.5      # 插值间隔
         self.w_d = 0.5      # cost线性组合系数
         self.path_ind_list = []
         self.no_path_cost = 1e4
@@ -29,10 +27,10 @@ class PathPlanner():
     def plan(self):
         # DP搜索
         tmp_l = 0   # self.sl_map.st_l# int((self.sl_map.n_l-1)/2)
-        local_buff = []
+        path_buff = []
         path_found = self.find_path()
-        if DRAW_FRENET_FIG: # 绘制Frenet系采样地图
-            self.sl_map.show()
+        if DRAW_SL_FIG: # 绘制Frenet系采样地图
+            self.sl_map.draw_sl_fig()
         if path_found:
             # print(self.cost_map)
             path_s = []
@@ -43,7 +41,7 @@ class PathPlanner():
                 tmp_l = self.path_ind_list[s]
                 path_s.append(self.sl_map.s_map[s][tmp_l])
                 path_l.append(self.sl_map.l_map[s][tmp_l])
-                if DRAW_FRENET_FIG:    # 选取的路径点
+                if DRAW_SL_FIG:    # 选取的路径点
                     plt.scatter(path_s[-1],path_l[-1],c='red')
 
             # send_num = int(self.sl_map.n_s/2)+1    # 除无人车位置外，发送的路径点个数（插值前）
@@ -57,8 +55,8 @@ class PathPlanner():
             ss = np.arange(path_s[0],path_s[-1],self.d_s)
             ll = curve_path.calc_point_arr(ss,0)
             for j in range(len(ss)):
-                local_buff.append(to_point(ss[j],ll[j]))
-            if DRAW_FRENET_FIG:
+                path_buff.append(to_point(ss[j],ll[j]))
+            if DRAW_SL_FIG:
                 plt.plot(ss,ll,c='red')
             
             """
@@ -69,7 +67,7 @@ class PathPlanner():
                 tmp_l = self.path_ind_list[s]
                 refer_path[0][s+1] = self.sl_map.s_map[s][tmp_l]
                 refer_path[1][s+1] = self.sl_map.l_map[s][tmp_l]
-                if DRAW_FRENET_FIG:    # 选取的路径点
+                if DRAW_SL_FIG:    # 选取的路径点
                     plt.scatter(refer_path[0][s+1],refer_path[1][s+1],c='red')
             # 五次样条插值
             send_s_n = int(self.sl_map.n_s/2)+1
@@ -78,44 +76,16 @@ class PathPlanner():
                 for j in range(len(ss)):
                     rx, ry = self.sl_map.converter.frenet_to_cartesian(ss[j],ll[j])
                     node = self.sl_map.map_to_world(to_point(rx, ry))
-                    local_buff.append(node)
-                if DRAW_FRENET_FIG:
+                    path_buff.append(node)
+                if DRAW_SL_FIG:
                     plt.plot(ss,ll,c='red')
             """
-            if DRAW_FRENET_FIG:
+            if DRAW_SL_FIG:
                 save_fig()
             # plt.show()
             # time.sleep(100)
-        return local_buff
+        return path_buff
     
-    def cal_cost(self,s_1,l_1,s_2,l_2):
-        if s_1 != -1:
-            p1 = np.array([self.sl_map.s_map[s_1][l_1],self.sl_map.l_map[s_1][l_1]])
-        else:   # 初始位置
-            p1 = self.sl_map.ego_point
-        p2 = np.array([self.sl_map.s_map[s_2][l_2],self.sl_map.l_map[s_2][l_2]])
-        # 五次多项式cost
-        ss, ll, dll, ddll, dddll = self.get_path(p1[0],p1[1],p2[0],p2[1],1)
-        mid_l_value = self.sl_map.l_map[s_1][self.sl_map.mid_l]
-        guide_cost = self.d_s*np.sum((ll-mid_l_value)**2)
-        smooth_cost = self.d_s*(np.sum(dll**2) + np.sum(ddll**2) + np.sum(dddll**2))
-        # 障碍物cost
-        arr = np.vstack((ss,ll))
-        if self.sl_map.ob_list:
-            tmp_dist = []
-            for ob_point in self.sl_map.ob_list:
-                dist, min_p = cal_dist_arr(arr,ob_point)
-                tmp_dist.append(dist)
-            min_dist = min(tmp_dist)
-            if min_dist < self.sl_map.ob_dist:
-                ob_cost = 3*self.no_path_cost
-            else: 
-                ob_cost = 0
-        else:   # 不存在障碍物
-            ob_cost = 0
-            
-        return self.w_d*guide_cost + (1-self.w_d)*smooth_cost + ob_cost
-
     """ DP递推搜索最优路径组合 """
     def find_path(self):
         # 找到起点
@@ -153,6 +123,35 @@ class PathPlanner():
             self.cost_map[s][l] = np.amin(tmp_cost)     # 暂存cost，用于后续计算
             self.index_map[s][l] = np.argmin(tmp_cost)  # 记录后续列下标在当前点位置  
         return True
+
+    """ 计算路径点之间的cost """
+    def cal_cost(self,s_1,l_1,s_2,l_2):
+        if s_1 != -1:
+            p1 = np.array([self.sl_map.s_map[s_1][l_1],self.sl_map.l_map[s_1][l_1]])
+        else:   # 初始位置
+            p1 = self.sl_map.ego_point
+        p2 = np.array([self.sl_map.s_map[s_2][l_2],self.sl_map.l_map[s_2][l_2]])
+        # 五次多项式cost
+        ss, ll, dll, ddll, dddll = self.get_path(p1[0],p1[1],p2[0],p2[1],1)
+        mid_l_value = self.sl_map.l_map[s_1][self.sl_map.mid_l]
+        guide_cost = self.d_s*np.sum((ll-mid_l_value)**2)
+        smooth_cost = self.d_s*(np.sum(dll**2) + np.sum(ddll**2) + np.sum(dddll**2))
+        # 障碍物cost
+        arr = np.vstack((ss,ll))
+        if self.sl_map.ob_list:
+            tmp_dist = []
+            for ob_point in self.sl_map.ob_list:
+                dist, min_p = cal_dist_arr(arr,ob_point)
+                tmp_dist.append(dist)
+            min_dist = min(tmp_dist)
+            if min_dist < self.sl_map.ob_dist:
+                ob_cost = 3*self.no_path_cost
+            else: 
+                ob_cost = 0
+        else:   # 不存在障碍物
+            ob_cost = 0
+            
+        return self.w_d*guide_cost + (1-self.w_d)*smooth_cost + ob_cost
 
     """ 五次多项式插值得到分段路径，tips = 1时返回导数信息 """
     def get_path(self,p1s,p1l,p2s,p2l,tips):

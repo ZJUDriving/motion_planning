@@ -253,7 +253,7 @@ class LocalPlanner(object):
 
         # 我的代码        
         if self.re_plan:
-            print("replan")
+            # print("replan")
             if self._waypoint_buffer:
                 planner = PlannerInterface(self.world, self._waypoint_buffer, self._vehicle, self.ob_list)
             else:
@@ -294,7 +294,7 @@ class LocalPlanner(object):
                                                     args_longitudinal=args_long)
 
         # print(self._target_speed)
-        # self._target_speed = 15.0
+        # self._target_speed = 15.0 # 单位km/h，*5/18=m/s
         control = self._pid_controller.run_step(self._target_speed, self.target_waypoint)
         control.brake = 0.0   
              

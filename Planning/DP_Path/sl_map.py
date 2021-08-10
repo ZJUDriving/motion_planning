@@ -8,12 +8,10 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 
-from Utils.tool import *
+from Utils.tool import to_point, save_fig, check_static, DRAW_ROBOT_FIG
 from Model.cartesian_frenet_conversion import CartesianFrenetConverter
 from Model.obstacle import *
 from Model.world_robot_conversion import WorldRobotConverter
-
-DRAW_ROBOT_FIG = False
 
 class SLMap():
     def __init__(self, R, t):
@@ -105,7 +103,7 @@ class SLMap():
         ob_pos = self.WRC.world_to_robot(ob_pos)
         if ob_pos[0] < -1:  # x<-1，即在车后方
             return False
-        if np.sum(np.abs(ob_vel)) < 0.001:        
+        if check_static(ob_vel):        
             ob_to_ori = cal_dist(self.ego_point,ob_pos)
             if ob_to_ori < self.ignore_dist:
                 print("Static obstacle dist: %.4f" % ob_to_ori)
@@ -165,7 +163,7 @@ class SLMap():
             world_point_list.append(node)
         return world_point_list
 
-    def show(self):
+    def draw_sl_fig(self):
         plt.figure()
         # [1:self.n_s+1][:]
         s_list = self.s_map.reshape(1,self.n_s*self.n_l)

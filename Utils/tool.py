@@ -10,8 +10,18 @@ import matplotlib.pyplot as plt
 from enum import Enum
 
 
+STEP_COUNT = 0      # 路径更新下标
 FIG_COUNT = 0       # 图片下标
 SAVE_PATH = "../output/000"
+
+
+DRAW_DEBUG = True           # 在Carla中绘制结果
+DRAW_WORLD_FIG = False
+DRAW_ROBOT_FIG = False
+DRAW_SL_FIG = False     # 绘制路径规划结果并保存图片
+DRAW_ST_FIG = False
+
+
 def save_fig():
     global FIG_COUNT
     mkdir(SAVE_PATH)
@@ -71,8 +81,8 @@ def mkdir(path):
         # 创建目录操作函数
         os.makedirs(path) 
         print("Create folder successfully")
-    else:
-        print("Folder already exists")
+    # else:
+    #     print("Folder already exists")
  
 
 

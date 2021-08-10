@@ -11,17 +11,13 @@ import math
 import matplotlib.pyplot as plt
 import time
 
-from Utils.tool import *
+from Utils.tool import get_ob_box, to_point, save_fig, RoadOption, Command
+from Utils.tool import STEP_COUNT, DRAW_DEBUG, DRAW_WORLD_FIG
 from Model.obstacle import *
 from Planning.DP_Path.path_planner import PathPlanner
+from Planning.DP_Speed.speed_planner import SpeedPlanner
 from Planning.DP_Path.sl_map import SLMap
 from Planning.DP_Speed.st_map import STMap
-
-
-STEP_COUNT = 0      # 路径更新下标
-DRAW_DEBUG = True   # 在Carla中绘制结果
-DRAW_WORLD_FIG = False
-DRAW_ST_FIG = False
 
 
 class PlannerInterface():
@@ -52,33 +48,35 @@ class PlannerInterface():
                 posi = self.get_point(way_p[0].transform.location)
                 plt.scatter(posi[0],posi[1],c='blue')
         
-        # 开始规划
-        # if command == Command.CHANGELANELEFT:
+        """ 规划核心代码 """
         start_time = time.time()
-        self.coor_trans(waypoint_ahead, command)    # 完成坐标转换，创建SL图
-        self.planner = PathPlanner(self.sl_map)     # 初始化路径规划器
-        path_buff = self.planner.plan()             # 进行路径规划
-
+        # 完成坐标转换，同时创建SL图
+        self.coor_trans(waypoint_ahead, command)    
+        # 路径规划
+        path_planner = PathPlanner(self.sl_map)     # 初始化路径规划器
+        path_buff = path_planner.plan()             # 进行路径规划
         if not path_buff:   # 未找到路径
             return []
-
+        # 创建ST图
         end_point = path_buff[-1]
-        print(end_point)
         plan_time = 5
-        self.st_map = STMap(end_point[0], plan_time)
+        self.st_map = STMap(self.sl_map.converter, end_point[0], plan_time)
         self.st_map.add_obstacle(path_buff, [], self.sl_map.dynamic_ob)
-        path_buff = self.sl_map.frenet_to_world(path_buff)  # 规划路径转换到世界坐标系下
+        # 速度规划
+        cur_vel = self._vehicle.get_velocity()
+        cur_speed = math.sqrt(cur_vel.x**2 + cur_vel.y**2)
+        speed_lim = 25.0 * 5.0 / 18.0
+        speed_planner = SpeedPlanner(self.st_map, cur_speed, speed_lim)
+        speed_planner.plan()
+        # 规划路径转换到世界坐标系下
+        path_buff = self.sl_map.frenet_to_world(path_buff)  
+        self.sl_map.save_robot_fig()
         end_time = time.time()
         print("[INFO] time_cost: %f" % (end_time - start_time))
 
-        self.sl_map.save_robot_fig()
         if DRAW_WORLD_FIG:
             for node in path_buff:
                 plt.scatter(node[0],node[1],c='red')
-            save_fig()
-        if DRAW_ST_FIG:
-            plt.figure()
-            self.st_map.show()
             save_fig()
         path_buff_carla = []
         for node in path_buff:
@@ -93,8 +91,6 @@ class PlannerInterface():
             for way_point in waypoint_ahead:
                 posi = self.get_point(way_point.transform.location)
                 plt.scatter(posi[0],posi[1],c='blue')
-            # plt.show()
-            # time.sleep(100)
         STEP_COUNT = STEP_COUNT + 1
         return path_buff_carla
         
