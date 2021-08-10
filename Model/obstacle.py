@@ -64,5 +64,12 @@ class DynamicObstacle:
             print("t is out of prediction range.")
             return 0.0
 
+    def info(self):
+        print("pos: ",)
+        print(self.ob_pos_list[0])
+        print("vel: ",)
+        print(self.ob_vel)
+
+
 
         

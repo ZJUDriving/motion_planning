@@ -62,8 +62,8 @@ class SLMap():
             plt.figure()
             self.converter.show()
             # plt.scatter(0.0,0.0,c='yellow')
-            for i in range(len(rx_list)):
-                plt.scatter(rx_list[i],ry_list[i],c='green')
+            # for i in range(len(rx_list)):
+            #     plt.scatter(rx_list[i],ry_list[i],c='red')
         end_s = self.converter.get_s(rx_list[-1])
         ss = self.d_s
         s_list = []
@@ -82,7 +82,7 @@ class SLMap():
             # plt.scatter(rx,ry_list[i],c='green')
             if DRAW_ROBOT_FIG:
                 rx,ry = self.converter.frenet_to_cartesian(s,0.0)
-                plt.scatter(rx,ry,c='red')
+                plt.scatter(rx,ry,c='yellow')
         """
         for i in range(1,len(rx_list)):
             rx = rx_list[i]
@@ -99,9 +99,7 @@ class SLMap():
         self.l_map = np.concatenate(tuple(self.l_map),axis=0).reshape(self.n_s,self.n_l)
         # print(self.s_map)
         # print(self.l_map)
-        if DRAW_ROBOT_FIG:
-            # plt.show()
-            save_fig()
+        
 
     def add_obstacle(self, ob_pos, ob_dist,ob_vel):
         ob_pos = self.WRC.world_to_robot(ob_pos)
@@ -119,18 +117,22 @@ class SLMap():
             else:
                 return False
         else: # 动态障碍物
-            ob_vel = self.WRC.world_to_robot(ob_vel)
+            ob_vel = self.WRC.vel_world_to_robot(ob_vel)
             dy_ob = DynamicObstacle(ob_pos,ob_vel,ob_dist)
             ob_to_ori = dy_ob.cal_min_dist(self.ego_point)
             if ob_to_ori < self.ignore_dist:
                 print("Dynamic obstacle min_dist: %.4f" % ob_to_ori)
+                # dy_ob.info()
                 ob_trajectory = ObstacleTrajectory(ob_dist)
                 for ob_pos in dy_ob.ob_pos_list:
                     s,l = self.converter.cartesian_to_frenet(ob_pos[0],ob_pos[1])
                     ob_point = np.array([s,l])
                     ob_trajectory.ob_pos_list.append(ob_point)
-                    self.ob_list.append(ob_point)
-                    self.ob_dist = max(self.ob_dist, ob_dist)
+                    if abs(ob_point[1]) - self.ob_dist < self.l_width:  # 对应SL图，只添加会影响规划结果的障碍物帧
+                        self.ob_list.append(ob_point)
+                        self.ob_dist = max(self.ob_dist, ob_dist)
+                        if DRAW_ROBOT_FIG:  # 绘制障碍物在机器人坐标系下的动态图
+                            self.draw_circle(ob_pos[0],ob_pos[1],self.ob_dist,'green')
                 self.dynamic_ob.append(ob_trajectory)
                 return True
             else:
@@ -157,6 +159,8 @@ class SLMap():
         world_point_list = []
         for point in point_list:
             rx, ry = self.converter.frenet_to_cartesian(point[0],point[1])
+            if DRAW_ROBOT_FIG:
+                plt.scatter(rx,ry,c='red')
             node = self.WRC.robot_to_world(to_point(rx, ry))
             world_point_list.append(node)
         return world_point_list
@@ -173,11 +177,25 @@ class SLMap():
         for ob_point in self.ob_list:
             # plt.scatter(self.start_point[0],self.start_point[1],c='red')
             if abs(ob_point[1]) - self.ob_dist < self.l_width:     # 是否绘制障碍物
-                th = np.arange(0,2*math.pi,math.pi/20)
-                circle_x = ob_point[0] + self.ob_dist*np.cos(th)
-                circle_y = ob_point[1] + self.ob_dist*np.sin(th)
-                plt.scatter(ob_point[0],ob_point[1],c='green')
-                plt.scatter(circle_x,circle_y,c='green')
+                self.draw_circle(ob_point[0],ob_point[1],self.ob_dist,'green')
+                # th = np.arange(0,2*math.pi,math.pi/20)
+                # circle_x = ob_point[0] + self.ob_dist*np.cos(th)
+                # circle_y = ob_point[1] + self.ob_dist*np.sin(th)
+                # plt.scatter(ob_point[0],ob_point[1],c='green')
+                # plt.scatter(circle_x,circle_y,c='green')
         # plt.show()
         # time.sleep(100)
+
+    def save_robot_fig(self):
+        pass
+        if DRAW_ROBOT_FIG:
+            # plt.show()
+            save_fig()
+        
+    def draw_circle(self,x,y,R,color='green'):
+        th = np.arange(0,2*math.pi,math.pi/20)
+        circle_x = x + R*np.cos(th)
+        circle_y = y + R*np.sin(th)
+        plt.scatter(x,y,c=color)
+        plt.scatter(circle_x,circle_y,c=color)
 

@@ -21,7 +21,7 @@ from Planning.DP_Speed.st_map import STMap
 STEP_COUNT = 0      # 路径更新下标
 DRAW_DEBUG = True   # 在Carla中绘制结果
 DRAW_WORLD_FIG = False
-DRAW_ST_FIG = True
+DRAW_ST_FIG = False
 
 
 class PlannerInterface():
@@ -50,8 +50,6 @@ class PlannerInterface():
             plt.scatter(ego_pos[0],ego_pos[1],c='yellow')
             for way_p in self._waypoint_buffer:
                 posi = self.get_point(way_p[0].transform.location)
-                print(way_p[1])
-                print(posi)
                 plt.scatter(posi[0],posi[1],c='blue')
         
         # 开始规划
@@ -73,14 +71,14 @@ class PlannerInterface():
         end_time = time.time()
         print("[INFO] time_cost: %f" % (end_time - start_time))
 
-        if DRAW_ST_FIG:
-            plt.figure()
-            self.st_map.show()
-            save_fig()
-        
+        self.sl_map.save_robot_fig()
         if DRAW_WORLD_FIG:
             for node in path_buff:
                 plt.scatter(node[0],node[1],c='red')
+            save_fig()
+        if DRAW_ST_FIG:
+            plt.figure()
+            self.st_map.show()
             save_fig()
         path_buff_carla = []
         for node in path_buff:
@@ -119,7 +117,6 @@ class PlannerInterface():
         ego_rot = np.array([[math.cos(ego_theta),-math.sin(ego_theta)], [math.sin(ego_theta),math.cos(ego_theta)]])
         # 添加机器人坐标系下的地图信息
         ref_line = []
-        ry_list_w = []
         for way_point in waypoint_ahead:
             pos = self.get_point(way_point.transform.location)
             ref_line.append(pos)
@@ -141,6 +138,7 @@ class PlannerInterface():
             if DRAW_DEBUG and is_near_ego_car:
                 # print("draw")
                 debug.draw_box(ob_box, ob_rot, 0.2, carla.Color(0,255,0,0),life_time=1.0)
+        
         
     def get_point(self, loc):
         return to_point(loc.x, loc.y)

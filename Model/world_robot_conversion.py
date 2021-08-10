@@ -21,6 +21,10 @@ class WorldRobotConverter:
         point = point.reshape(2) + self.t
         return point
 
+    def vel_world_to_robot(self, vel):
+        vel = np.dot(self.R.transpose(),vel.reshape(2,1)).reshape(2)
+        return vel
+
 
 
 

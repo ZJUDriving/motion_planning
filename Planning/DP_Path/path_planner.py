@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 from Utils.tool import *
 from Model.curve import QuinticPoly, Curve
 
-DRAW_FRENET_FIG = True    # 绘制路径规划结果并保存图片
+DRAW_FRENET_FIG = False    # 绘制路径规划结果并保存图片
 
 
 class PathPlanner():
