@@ -16,23 +16,21 @@ from Model.curve import QuinticPoly, Curve
 class PathPlanner():
     def __init__(self, sl_map):
         self.sl_map = sl_map
-        self.init_ind = -2  # 储存起始下标
+        self.init_ind = -2          # 储存起始下标
         self.cost_map = np.zeros((self.sl_map.n_s,self.sl_map.n_l))
         self.index_map = self.init_ind*np.ones((self.sl_map.n_s,self.sl_map.n_l))
-        self.d_s = 0.5      # 插值间隔
-        self.w_d = 0.5      # cost线性组合系数
-        self.path_ind_list = []
-        self.no_path_cost = 1e4
+        self.d_s = 0.5              # 插值间隔
+        self.w_d = 0.5              # cost线性组合系数
+        self.path_ind_list = []     # 路径点下标列表
+        self.no_path_cost = 1e4     # 没有找到可行路径的cost界限
 
     def plan(self):
         # DP搜索
-        tmp_l = 0   # self.sl_map.st_l# int((self.sl_map.n_l-1)/2)
-        path_buff = []
-        path_found = self.find_path()
         if DRAW_SL_FIG: # 绘制Frenet系采样地图
             self.sl_map.draw_sl_fig()
+        path_buff = []
+        path_found = self.find_path()
         if path_found:
-            # print(self.cost_map)
             path_s = []
             path_l = []
             path_s.append(self.sl_map.ego_point[0])
@@ -44,43 +42,19 @@ class PathPlanner():
                 if DRAW_SL_FIG:    # 选取的路径点
                     plt.scatter(path_s[-1],path_l[-1],c='red')
 
+            # 路径五次样条插值
             # send_num = int(self.sl_map.n_s/2)+1    # 除无人车位置外，发送的路径点个数（插值前）
             # path_s = path_s[:send_num+1]
             # path_l = path_l[:send_num+1]
             path_s = np.array(tuple(path_s))
             path_l = np.array(tuple(path_l))
-            
             curve_path = Curve(np.diff(path_s),path_s[0],self.d_s,path_l,0.0)
-            
             ss = np.arange(path_s[0],path_s[-1],self.d_s)
             ll = curve_path.calc_point_arr(ss,0)
             for j in range(len(ss)):
                 path_buff.append(to_point(ss[j],ll[j]))
             if DRAW_SL_FIG:
                 plt.plot(ss,ll,c='red')
-            
-            """
-            refer_path = np.zeros((2,self.sl_map.n_s+1)) # 选取的路径点
-            refer_path[0][0] = self.sl_map.ego_point[0]  # 无人车的位置
-            refer_path[1][0] = self.sl_map.ego_point[1]
-            for s in range(self.sl_map.n_s):
-                tmp_l = self.path_ind_list[s]
-                refer_path[0][s+1] = self.sl_map.s_map[s][tmp_l]
-                refer_path[1][s+1] = self.sl_map.l_map[s][tmp_l]
-                if DRAW_SL_FIG:    # 选取的路径点
-                    plt.scatter(refer_path[0][s+1],refer_path[1][s+1],c='red')
-            # 五次样条插值
-            send_s_n = int(self.sl_map.n_s/2)+1
-            for i in range(send_s_n):
-                ss, ll = self.get_path(refer_path[0][i],refer_path[1][i],refer_path[0][i+1],refer_path[1][i+1],0)
-                for j in range(len(ss)):
-                    rx, ry = self.sl_map.converter.frenet_to_cartesian(ss[j],ll[j])
-                    node = self.sl_map.map_to_world(to_point(rx, ry))
-                    path_buff.append(node)
-                if DRAW_SL_FIG:
-                    plt.plot(ss,ll,c='red')
-            """
-            if DRAW_SL_FIG:
                 save_fig()
             # plt.show()
             # time.sleep(100)

@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """ 
-机器人坐标系
+坐标系旋转与平移
 """
 
 import numpy as np
 
-class WorldRobotConverter:
+class GeneralConverter:
     def __init__(self, R, t):
         self.R = R        
         self.t = t

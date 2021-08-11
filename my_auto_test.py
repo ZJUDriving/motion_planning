@@ -137,7 +137,7 @@ try:
     print("[INFO] Create car")
 
     """ 创建障碍物 """
-    vehicles_list = []
+    obstacle_list = []
     if ob_state == ObState.ASSIGN:   # 创建人为指定位置的障碍物
         obstacle_bp = blueprint_library.find('vehicle.tesla.model3')    # 创建障碍物
         obstacle_bp.set_attribute('color', '0,0,0')
@@ -151,8 +151,8 @@ try:
             throttle = 0.0
             brake = 1.0
         obstacle.apply_control(carla.VehicleControl(throttle=throttle, steer=0.0, brake=brake))
-        actor_list.append(obstacle)
-        vehicles_list.append(obstacle)
+        # actor_list.append(obstacle)
+        obstacle_list.append(obstacle)
         print("[INFO] Create obstacle")
     if SHOW_CAM and ob_state == ObState.ASSIGN:     # 加载相机
         camera_bp = blueprint_library.find('sensor.camera.rgb') 
@@ -169,7 +169,7 @@ try:
     if ob_state == ObState.RANDOM:  # 创建随机自主运动的障碍物
         vehicles_id = spawn_npc(FPS)
         for id in vehicles_id:
-            vehicles_list.append(world.get_actor(id))
+            obstacle_list.append(world.get_actor(id))
     time.sleep(1.0)
 
     """ 初始绘制 """
@@ -194,7 +194,7 @@ try:
         #     debug.draw_box(ob,ob.rotation, 0.2, carla.Color(0,255,0,0),0) 
     if DRAW_OB and ob_state == ObState.ASSIGN: # 障碍物边框
         # time.sleep(0.5)
-        # for vehicle in vehicles_list:
+        # for vehicle in obstacle_list:
         #     ob_box, ob_rot = get_ob_box(world,vehicle)
         #     # ob_vertices = ob_box.get_world_vertices(carla.Transform())        # 得到障碍物的顶点
         #     # for ob_vertice in ob_vertices:
@@ -210,7 +210,7 @@ try:
     print("[INFO] Init debugger")
     
     """ 其他设置 """
-    agent = DriverlessAgent(ego_car, vehicles_list, FPS)   # 自动驾驶服务创建
+    agent = DriverlessAgent(ego_car, obstacle_list, FPS)   # 自动驾驶服务创建
     destination = carla.Location(x=target_pos[0],y=target_pos[1],z=target_pos[2])   
     agent.set_destination(agent.vehicle.get_location(), destination, clean=True)    # 设置目标点
     print("[INFO] Set destination")
@@ -261,5 +261,5 @@ finally:
         actor.destroy()
     print('done.')
     if ob_state == ObState.RANDOM:
-        for vehicle in vehicles_list:
+        for vehicle in obstacle_list:
             vehicle.destroy()

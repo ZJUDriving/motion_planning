@@ -4,8 +4,6 @@
 障碍物
 """
 
-from matplotlib.pyplot import cla
-import numpy as np
 from Utils.tool import cal_dist
 
 class VehicleBox:
@@ -13,6 +11,16 @@ class VehicleBox:
         self.pos = pos
         self.vel = vel
         self.radius = radius
+
+    def cal_dist(self, point):
+        return cal_dist(self.pos, point)
+
+
+class StaticObstacle:
+    def __init__(self, ob_pos, ob_vel, ob_dist):
+        self.ob_pos = ob_pos
+        self.ob_vel = ob_vel
+        self.ob_dist = ob_dist
 
     def cal_dist(self, point):
         return cal_dist(self.pos, point)
