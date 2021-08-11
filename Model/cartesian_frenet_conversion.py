@@ -28,7 +28,37 @@ class CartesianFrenetConverter:
         # print(ex,ey)
         # print(self.rx_ori,self.ry_ori)
        
-    def cartesian_to_frenet(self,x,y):
+    def cartesian_to_frenet(self, x, y, vx=0.0, vy=0.0, order=0):
+        # 计算投影点
+        min_dist, min_p = self.ref_curve.projection(x,y)
+        rx = min_p[0]
+        ry = min_p[1]
+        rtheta = np.arctan(self.ref_curve.calc_point(rx,1))
+        dx = x - rx
+        dy = y - ry
+        if dy * math.cos(rtheta) - dx * math.sin(rtheta) > 0:
+            l_sign = 1.0
+        else:
+            l_sign = -1.0
+        l = l_sign * min_dist
+        s = self.get_s(rx)
+        if order == 0:
+            return s, l
+        else:
+            kr = self.get_curvature(rx)
+            vtheta = math.atan2(vy,vx)
+            speed = math.sqrt(vx**2+vy**2)
+            s_dt = speed * math.cos(vtheta - rtheta) / (1 - kr * l)
+            return s, l, s_dt
+
+    def frenet_to_cartesian(self,s,l):
+        rx,ry = self.get_rxy(s)
+        rtheta = np.arctan(self.ref_curve.calc_point(rx,1))
+        x = rx - l * math.sin(rtheta)
+        y = ry + l * math.cos(rtheta)
+        return x,y
+
+    def cartesian_to_frenet_vel(self,x,y):
         # 计算投影点
         min_dist, min_p = self.ref_curve.projection(x,y)
         rx = min_p[0]
@@ -44,17 +74,17 @@ class CartesianFrenetConverter:
         s = self.get_s(rx)
         return s, l
 
-    def frenet_to_cartesian(self,s,l):
-        rx,ry = self.get_rxy(s)
-        rtheta = np.arctan(self.ref_curve.calc_point(rx,1))
-        x = rx - l * math.sin(rtheta)
-        y = ry + l * math.cos(rtheta)
-        return x,y
+    def get_curvature(self, rx):
+        dl = self.ref_curve.calc_point(rx, 1)
+        ddl = self.ref_curve.calc_point(rx, 2)
+        kr = 1.0*abs(ddl)/((1+dl**2)**1.5)
+        return kr
+
     
-    def get_s(self,rx):
+    def get_s(self, rx):
         return self.ref_curve.calc_arc_len(self.rx_ori, rx)
 
-    def get_rxy(self,s):
+    def get_rxy(self, s):
         rx_list = np.arange(self.rx_ori,self.rx_max,self.d_x)
         found = False
         for i in range(len(rx_list)):
@@ -74,6 +104,8 @@ class CartesianFrenetConverter:
         rx_list = np.arange(self.rx_ori,self.rx_max,self.d_x)
         ry_list = self.ref_curve.calc_point_arr(rx_list,0)
         plt.plot(rx_list,ry_list)
+
+        
         
 
 

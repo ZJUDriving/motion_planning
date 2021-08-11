@@ -63,9 +63,13 @@ class PlannerInterface():
         self.st_map = STMap(self.sl_map.converter, end_point[0], plan_time)
         self.st_map.add_obstacle(path_buff, [], self.sl_map.dynamic_ob)
         # 速度规划
+
         cur_vel = self._vehicle.get_velocity()
         cur_speed = math.sqrt(cur_vel.x**2 + cur_vel.y**2)
+        # print(cur_speed)
+        # s,l, cur_speed = self.sl_map.converter.cartesian_to_frenet()
         speed_lim = 25.0 * 5.0 / 18.0
+        # print(cur_speed)
         speed_planner = SpeedPlanner(self.st_map, cur_speed, speed_lim)
         speed_planner.plan()
         # 规划路径转换到世界坐标系下

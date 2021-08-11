@@ -55,6 +55,7 @@ class SpeedPlanner:
                 plt.plot(tt,ss,c='red')
         if DRAW_ST_FIG:
             save_fig()
+            # self.show_map()
         return vv   
 
     def find_speed(self):
@@ -64,17 +65,17 @@ class SpeedPlanner:
                 flag = self.find_speed_point(i,j)
 
         # 找到最优终点
-        tmp_i_cost = []
-        for i in range(1,self.st_map.n_t):
+        tmp_i_cost = [] # 到达s的终点
+        for i in range(1,self.st_map.n_t):  # t=0时不可能，i从1开始
             tmp_i_cost.append(self.st_map.map[i][-1].cost)
         min_i_cost = min(tmp_i_cost)
 
-        tmp_j_cost = []
-        for j in range(1,self.st_map.n_s):
+        tmp_j_cost = [] # 到达t的终点
+        for j in range(0,self.st_map.n_s):
             tmp_j_cost.append(self.st_map.map[-1][j].cost)
         min_j_cost = min(tmp_j_cost)
         if min_i_cost <= min_j_cost:
-            end_i = tmp_i_cost.index(min_i_cost)
+            end_i = tmp_i_cost.index(min_i_cost)+1
             end_j = self.st_map.n_s-1
         else:
             end_i = self.st_map.n_t-1
@@ -157,9 +158,24 @@ class SpeedPlanner:
         else:   # 未超速，奖励
             delta_v = (v-self.speed_lim)/self.speed_lim
             speed_cost = -10*10*delta_v*self.dt
+            # speed_cost = 0
         # 加速度和加加速度Cost
         acc_cost = (a**2)*self.dt
         jerk_cost = (j**2)*self.dt
         total_cost = ob_cost + speed_cost + acc_cost + jerk_cost
         return total_cost, flag
+
+
+    def show_map(self):
+        cost_map = -1*np.ones((self.st_map.n_s,self.st_map.n_t))
+        ind_map = -1*np.ones((self.st_map.n_s,self.st_map.n_t))
+        for i in range(self.st_map.n_t):
+            for j in range(self.st_map.n_s):
+                cost_map[self.st_map.n_s-j-1][i] = self.st_map.map[i][j].cost
+                ind_map[self.st_map.n_s-j-1][i] = self.st_map.map[i][j].pre_ind
+
+        np.set_printoptions(precision=3)
+        print(cost_map)
+        np.set_printoptions(precision=3)
+        print(ind_map)
         
