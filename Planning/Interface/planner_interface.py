@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import time
 
 from Utils.tool import get_ob_box, to_point, save_fig, RoadOption, Command
-from Utils.tool import STEP_COUNT, DRAW_DEBUG, DRAW_WORLD_FIG
+from Utils.tool import STEP_COUNT, DRAW_DEBUG, DRAW_WORLD_FIG, DRAW_SPEED_FIG, DRAW_SL_FIG
 from Model.obstacle import *
 from robot_map import RobotMap
 from Planning.DP_Path.path_planner import PathPlanner
@@ -52,21 +52,27 @@ class PlannerInterface():
         
         """ 规划核心代码 """
         start_time = time.time()
-        # 完成坐标转换，同时创建SL图
+        # 完成坐标转换，同时创建Robot图
         self.coor_trans(waypoint_ahead, command)    
         # 路径规划
-        path_buff = self.path_plan()
-        if not path_buff:   # 未找到路径
-            return []
+        path_found, curve_path = self.path_plan()
+        if not path_found:   # 未找到路径
+            return [], []
         # 速度规划
-        self.speed_plan(path_buff)
+        speed_found, path_buff, speed_buff = self.speed_plan(curve_path)
+        if not speed_found:
+            return [], []
         # 规划路径转换到世界坐标系下
         path_buff = self.sl_map.path_convert(path_buff)  
         path_buff = self.robot_map.path_convert(path_buff)  
         self.robot_map.save_robot_fig()
         end_time = time.time()
         print("[INFO] time_cost: %f" % (end_time - start_time))
-
+        
+        if DRAW_SPEED_FIG:
+            plt.figure()
+            plt.plot(speed_buff)
+            save_fig()
         if DRAW_WORLD_FIG:
             for node in path_buff:
                 plt.scatter(node[0],node[1],c='red')
@@ -85,7 +91,7 @@ class PlannerInterface():
                 posi = self.get_point(way_point.transform.location)
                 plt.scatter(posi[0],posi[1],c='blue')
         STEP_COUNT = STEP_COUNT + 1
-        return path_buff_carla
+        return path_buff_carla, speed_buff
         
     """ 完成坐标转换，创建Robot坐标系图 """
     def coor_trans(self, waypoint_ahead, command):
@@ -100,6 +106,7 @@ class PlannerInterface():
         # st_theta = math.atan2(next_pos[1]-st_pos[1], next_pos[0]-st_pos[0])
         # st_rot = np.array([[math.cos(st_theta),-math.sin(st_theta)], [math.sin(st_theta),math.cos(st_theta)]])
         ego_pos = self.get_point(self._vehicle.get_transform().location)
+        ego_vel = self.get_point(self._vehicle.get_velocity())
         ego_vec = self._vehicle.get_transform().rotation.get_forward_vector() 
         ego_theta = math.atan2(ego_vec.y, ego_vec.x) 
         ego_rot = np.array([[math.cos(ego_theta),-math.sin(ego_theta)], [math.sin(ego_theta),math.cos(ego_theta)]])
@@ -109,6 +116,7 @@ class PlannerInterface():
             pos = self.get_point(way_point.transform.location)
             ref_line.append(pos)
         self.robot_map = RobotMap(ego_rot,ego_pos)
+        self.robot_map.add_robot(ego_pos, ego_vel, 0.0)
         self.robot_map.add_ref_line(ref_line,l_width,n_l,n_s,cal_theta_ind)
         debug = self.world.debug
         for ob in self.ob_list:
@@ -128,21 +136,29 @@ class PlannerInterface():
         path_buff = path_planner.plan()             # 进行路径规划
         return path_buff
 
-    def speed_plan(self, path_buff):
+    def speed_plan(self, curve_path):
         # 创建ST图
+        path_buff = self.sl_map.path_sampling(curve_path, draw=DRAW_SL_FIG)
         end_point = path_buff[-1]
         plan_time = 5
         self.st_map = STMap(self.sl_map.converter, end_point[0], plan_time)
         self.st_map.add_obstacle(path_buff, [], self.sl_map.dy_ob_traj)
         # 速度规划
-        cur_vel = self._vehicle.get_velocity()
-        cur_speed = math.sqrt(cur_vel.x**2 + cur_vel.y**2)
-        # print(cur_speed)
-        # s,l, cur_speed = self.sl_map.converter.cartesian_to_frenet()
+        cur_vel = self.sl_map.robot_vel
+        # print(cur_vel)
+        # cur_speed = math.sqrt(cur_vel.x**2 + cur_vel.y**2)
         speed_lim = 25.0 * 5.0 / 18.0
-        # print(cur_speed)
-        speed_planner = SpeedPlanner(self.st_map, cur_speed, speed_lim)
-        speed_planner.plan()
+        # print(speed_lim)
+        speed_planner = SpeedPlanner(self.st_map, cur_vel, speed_lim)
+        ss, speed_buff = speed_planner.plan()
+        # 得到路径点和速度序列
+        # ll = self.sl_map.converter.ref_curve.calc_point_arr(ss, 0)
+        path_buff = self.sl_map.path_sampling(curve_path, False, ss)
+        speed_found = True
+        return speed_found, path_buff, speed_buff
+
+
+
         
     def get_point(self, loc):
         return to_point(loc.x, loc.y)

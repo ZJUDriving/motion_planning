@@ -11,7 +11,7 @@ from Utils.tool import cal_dist_arr
 
 """ 样条插值 """
 class Curve:
-    def __init__(self, T, t_bios, dt, x, vec):   # x比T多一个数
+    def __init__(self, t, dt, x, vec):   # x比T多一个数
         """
             :param T        自变量列表的一阶差分
             :param t_bios   自变量列表的起始值
@@ -19,22 +19,22 @@ class Curve:
             :param x        因变量列表
             :param vec      起点处的v
         """
-        self.T = T
-        self.n = len(T)
+        self.T = np.diff(t)
+        self.n = len(self.T)
         self.curve_list = []
         self.dt = dt
-        self.t_bios = t_bios
+        self.t_bios = t[0]
         # 简单起见，v和a全取0.0
         # 自适应得到v
-        v = 1.0*(x[2:]-x[:-2]) / (T[1:]+T[:-1])
+        v = 1.0*(x[2:]-x[:-2]) / (self.T[1:]+self.T[:-1])
         v = np.insert(v,0,vec)
         v = np.append(v,vec)
-        a = 1.0*(v[2:]-v[:-2]) / (T[1:]+T[:-1])
+        a = 1.0*(v[2:]-v[:-2]) / (self.T[1:]+self.T[:-1])
         a = np.insert(a,0,0.0)
         a = np.append(a,0.0)
         for i in range(self.n):
-            # self.curve_list.append(QuinticPoly(x[i],vec,0.0,x[i+1],vec,0.0,T[i]))
-            self.curve_list.append(QuinticPoly(x[i],v[i],a[i],x[i+1],v[i+1],a[i+1],T[i]))
+            # self.curve_list.append(QuinticPoly(x[i],vec,0.0,x[i+1],vec,0.0,self.T[i]))
+            self.curve_list.append(QuinticPoly(x[i],v[i],a[i],x[i+1],v[i+1],a[i+1],self.T[i]))
 
     def calc_point_arr(self, t_arr, order):
         t_arr = t_arr - self.t_bios

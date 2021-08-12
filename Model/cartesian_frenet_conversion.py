@@ -10,8 +10,8 @@ class CartesianFrenetConverter:
     def __init__(self,ex,ey,rx_list,ry_list,vec):
         self.d_x = 0.5          # 量化间隔
         # 找到原点
-        T_x = np.diff(rx_list,n=1)      # 计算x维度间隔
-        self.ref_curve = Curve(T_x,rx_list[0],self.d_x,ry_list,vec)
+        # T_x = np.diff(rx_list,n=1)      # 计算x维度间隔
+        self.ref_curve = Curve(rx_list,self.d_x,ry_list,vec)
         # xx = np.arange(rx_list[0],rx_list[-1],self.d_x)
         # plt.plot(xx,self.ref_curve.calc_point_arr(xx,0))
         # plt.scatter(ex,ey,c='red')
@@ -57,22 +57,6 @@ class CartesianFrenetConverter:
         x = rx - l * math.sin(rtheta)
         y = ry + l * math.cos(rtheta)
         return x,y
-
-    def cartesian_to_frenet_vel(self,x,y):
-        # 计算投影点
-        min_dist, min_p = self.ref_curve.projection(x,y)
-        rx = min_p[0]
-        ry = min_p[1]
-        rtheta = np.arctan(self.ref_curve.calc_point(rx,1))
-        dx = x - rx
-        dy = y - ry
-        if dy*math.cos(rtheta)-dx*math.sin(rtheta) > 0:
-            l_sign = 1.0
-        else:
-            l_sign = -1.0
-        l = l_sign * min_dist
-        s = self.get_s(rx)
-        return s, l
 
     def get_curvature(self, rx):
         dl = self.ref_curve.calc_point(rx, 1)

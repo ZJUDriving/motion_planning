@@ -6,7 +6,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from Utils.tool import save_fig, to_point, DRAW_ST_FIG
+from Utils.tool import save_fig, DRAW_ST_FIG
 from Model.curve import Curve
 
 # TODO:最后一点的位置非常奇怪
@@ -44,19 +44,18 @@ class SpeedPlanner:
                 # speed_buff.append(v)
             # s-t插值，在取每个s路径点对应的速度，即一阶导数
             curve_dt = self.dt*1.0/5
-            vec = 0.0
             t_arr = np.array(tuple(t_arr))
             s_arr = np.array(tuple(s_arr))
-            curve_speed = Curve(np.diff(t_arr),t_arr[0],curve_dt,s_arr,vec)
-            tt = np.arange(t_arr[0],t_arr[-1],curve_dt)
+            curve_speed = Curve(t_arr, curve_dt, s_arr, self.cur_vel)
+            tt = np.arange(t_arr[0], t_arr[-1], curve_dt)
+            ss = curve_speed.calc_point_arr(tt,0)
             vv = curve_speed.calc_point_arr(tt,1)
             if DRAW_ST_FIG:
-                ss = curve_speed.calc_point_arr(tt,0)
                 plt.plot(tt,ss,c='red')
         if DRAW_ST_FIG:
             save_fig()
             # self.show_map()
-        return vv   
+        return ss, vv   
 
     def find_speed(self):
         pre_j = 0

@@ -66,9 +66,10 @@ class LocalPlanner(object):
         self.ob_list = agent.ob_list
         self.re_plan = True
         self.local_ind = 0
-        self.local_buff = []
+        self.path_buff = []
         self.local_goal = []
         self.stop_flag = False
+        self.replan_ind = 10
 
     def reset_vehicle(self):
         """Reset the ego-vehicle"""
@@ -232,37 +233,56 @@ class LocalPlanner(object):
                 max_index = i
         if max_index >= 0:
             for i in range(max_index + 1):
-                if self._waypoint_buffer:
-                    self._waypoint_buffer.popleft()
-                if self.waypoints_queue:
-                    next_p_found = True
-                    next_p = self.waypoints_queue.popleft()
-                    last_p = self._waypoint_buffer[-1]
-                    # 防止弹出相同的点
-                    while not self.check_valid(next_p[0].transform.location,last_p[0].transform.location):
-                        if self.waypoints_queue:
-                            next_p = self.waypoints_queue.popleft()
-                        else:
-                            next_p_found = False
-                            break
-                    if next_p_found:
-                        self._waypoint_buffer.append(next_p)
+                self.updata_waypoint()
             self.re_plan = True
             # print("in")
                 
 
-        # 我的代码        
+        # 局部路径和速度规划      
         if self.re_plan:
             # print("replan")
             if self._waypoint_buffer:
                 planner = PlannerInterface(self.world, self._waypoint_buffer, self._vehicle, self.ob_list)
             else:
                 print("Waypoint buff is empty.")
-            self.local_buff = planner.run_step()
+            self.path_buff, self.speed_buff = planner.run_step()
             self.re_plan = False
             self.local_ind = 0
 
-        if len(self.local_buff) == 0:   # 没有找到路，停车
+        # 确定当前目标点和期望速度
+        if len(self.path_buff) == 0:   # 没有找到路，停车
+            tmp_ind = -1
+        else:
+            if self.local_ind < len(self.path_buff) - self.replan_ind:   # 根据路径更新下一个局部目标点
+                tmp_ind = self.local_ind
+                for i in range(self.local_ind,len(self.path_buff)):
+                    # print(self.path_buff[i])
+                    # print(vehicle_transform.location)
+                    if self.cal_dist(
+                            self.path_buff[i], vehicle_transform.location) < self._min_distance:
+                        tmp_ind = i
+                        # print(tmp_ind)
+                self.local_ind = tmp_ind
+            else:
+                tmp_ind = -1
+                # self.updata_waypoint()
+                self.re_plan = True
+
+        # 控制器
+        if tmp_ind >= 0:
+            # print("buff index %d" % tmp_ind)
+            self.target_waypoint = self.path_buff[tmp_ind]
+            self._target_speed = self.speed_conversion(self.speed_buff[tmp_ind], "m")
+            self._pid_controller = VehiclePIDController(self._vehicle,
+                                                        args_lateral=args_lat,
+                                                        args_longitudinal=args_long)
+
+            print(self.speed_buff[tmp_ind])
+            print(self._target_speed)
+            # self._target_speed = 15.0 # 单位km/h，*5/18=m/s
+            control = self._pid_controller.run_step(self._target_speed, self.target_waypoint)
+            control.brake = 0.0  
+        else:
             print("Stop now")
             control = carla.VehicleControl()
             control.steer = 0.0
@@ -272,37 +292,35 @@ class LocalPlanner(object):
             # control.manual_gear_shift = False
             self.re_plan = True
             return control
-
-        if self.local_ind < len(self.local_buff):   # 根据路径更新下一个局部目标点
-            tmp_ind = self.local_ind
-            for i in range(self.local_ind,len(self.local_buff)):
-                # print(self.local_buff[i])
-                # print(vehicle_transform.location)
-                if self.cal_dist(
-                        self.local_buff[i], vehicle_transform.location) < self._min_distance:
-                    tmp_ind = i
-                    # print(tmp_ind)
-            self.local_ind = tmp_ind
-        else:
-            tmp_ind = -1
-            self.re_plan = True
-        if tmp_ind >= 0:
-            # print("buff index %d" % tmp_ind)
-            self.target_waypoint = self.local_buff[tmp_ind]
-        self._pid_controller = VehiclePIDController(self._vehicle,
-                                                    args_lateral=args_lat,
-                                                    args_longitudinal=args_long)
-
-        # print(self._target_speed)
-        # self._target_speed = 15.0 # 单位km/h，*5/18=m/s
-        control = self._pid_controller.run_step(self._target_speed, self.target_waypoint)
-        control.brake = 0.0   
              
 
         # if debug:
         #     draw_waypoints(self._vehicle.get_world(),
         #                    [self.target_waypoint], 1.0)
         return control
+
+    def updata_waypoint(self, del_pre=True):
+        if del_pre and self._waypoint_buffer:
+            self._waypoint_buffer.popleft()
+        if self.waypoints_queue:
+            next_p_found = True
+            next_p = self.waypoints_queue.popleft()
+            last_p = self._waypoint_buffer[-1]
+            # 防止弹出相同的点
+            while not self.check_valid(next_p[0].transform.location,last_p[0].transform.location):
+                if self.waypoints_queue:
+                    next_p = self.waypoints_queue.popleft()
+                else:
+                    next_p_found = False
+                    break
+            if next_p_found:
+                self._waypoint_buffer.append(next_p)
+
+    def speed_conversion(self, speed, speed_type):
+        if speed_type == "k":
+            return speed * 5.0 / 18.0
+        else:
+            return speed * 18.0 / 5.0
 
     def check_valid(self,next_p,last_p):
         is_valid = True

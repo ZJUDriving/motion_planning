@@ -19,8 +19,14 @@ class RobotMap():
         self.ignore_dist = 20       # 视野范围之外的障碍物直接不计入RobotMap
         self.static_ob = []
         self.dynamic_ob = []
+        self.robot = []
 
-        
+    """ 添加车道参考线 """
+    def add_robot(self, rob_pos, rob_vel, rob_dist):
+        rob_pos = self.WRC.world_to_robot(rob_pos)
+        rob_vel = self.WRC.vel_world_to_robot(rob_vel)
+        self.robot = VehicleBox(rob_pos, rob_vel, rob_dist)
+
     """ 添加车道参考线 """
     def add_ref_line(self, ref_line, l_width, n_l, n_s, cal_theta_ind=0):
         self.n_l = n_l

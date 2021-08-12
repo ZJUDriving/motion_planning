@@ -28,8 +28,9 @@ class PathPlanner():
         # DP搜索
         if DRAW_SL_FIG: # 绘制Frenet系采样地图
             self.sl_map.draw_sl_fig()
-        path_buff = []
+        
         path_found = self.find_path()
+        curve_path = []
         if path_found:
             path_s = []
             path_l = []
@@ -48,17 +49,17 @@ class PathPlanner():
             # path_l = path_l[:send_num+1]
             path_s = np.array(tuple(path_s))
             path_l = np.array(tuple(path_l))
-            curve_path = Curve(np.diff(path_s),path_s[0],self.d_s,path_l,0.0)
-            ss = np.arange(path_s[0],path_s[-1],self.d_s)
-            ll = curve_path.calc_point_arr(ss,0)
-            for j in range(len(ss)):
-                path_buff.append(to_point(ss[j],ll[j]))
-            if DRAW_SL_FIG:
-                plt.plot(ss,ll,c='red')
-                save_fig()
+            curve_path = Curve(path_s,self.d_s,path_l,0.0)
+            # ss = np.arange(path_s[0],path_s[-1],self.d_s)
+            # ll = curve_path.calc_point_arr(ss,0)
+            # for j in range(len(ss)):
+            #     path_buff.append(to_point(ss[j],ll[j]))
+            # if DRAW_SL_FIG:
+            #     plt.plot(ss,ll,c='red')
+            #     save_fig()
             # plt.show()
             # time.sleep(100)
-        return path_buff
+        return path_found, curve_path
     
     """ DP递推搜索最优路径组合 """
     def find_path(self):
@@ -129,9 +130,9 @@ class PathPlanner():
 
     """ 五次多项式插值得到分段路径，tips = 1时返回导数信息 """
     def get_path(self,p1s,p1l,p2s,p2l,tips):
-        # s = np.array([p2s-p1s])
+        # s = np.array([p1s,p2s])
         # x = np.array([p1l,p2l])
-        # cc = Curve(s,p1s,self.d_s,x,0.0)
+        # cc = Curve(s,self.d_s,x,0.0)
         # ss = np.arange(p1s,p2s,self.d_s)
         # ll = cc.calc_point_arr(ss,0)
         # if tips == 1:
