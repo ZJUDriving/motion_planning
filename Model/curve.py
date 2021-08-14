@@ -24,6 +24,7 @@ class Curve:
         self.curve_list = []
         self.dt = dt
         self.t_bios = t[0]
+        self.t_end = t[-1]
         # 简单起见，v和a全取0.0
         # 自适应得到v
         v = 1.0*(x[2:]-x[:-2]) / (self.T[1:]+self.T[:-1])

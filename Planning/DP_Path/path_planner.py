@@ -71,7 +71,7 @@ class PathPlanner():
             for l in range(self.sl_map.n_l):
                 self.find_path_point(s,l)
             tmp_cost = self.cost_map[s,:]
-            if np.min(tmp_cost) > self.no_path_cost:
+            if np.min(tmp_cost) > 10*self.no_path_cost:
                 print("Path not found!")
                 return False
         # 找到最优终点

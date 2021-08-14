@@ -32,13 +32,14 @@ class RobotMap():
         self.n_l = n_l
         self.n_s = n_s
         self.l_width = l_width
+        self.save_width = 0.6
         self.rx_list = []
         self.ry_list = []
         for world_point in ref_line:
             point = self.WRC.world_to_robot(world_point)
             self.rx_list.append(point[0])
             self.ry_list.append(point[1])
-        self.rx_list.insert(0,0.0)   # TODO:直接用当前位置作为Frenet系原点？
+        self.rx_list.insert(0,0.0)   # TODO:直接用当前位置作为Frenet系原点？（车道参考线延长）
         self.ry_list.insert(0,0.0)
         self.line_vec = 0.0
 

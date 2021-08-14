@@ -84,8 +84,8 @@ try:
         ego_ori = [0, 180, 0]
         target_pos = [30.2, -4.8, 1.0]
         # ob_pos = [180, -6.7, 1.0]
-        ob_pos = [180, -6.7-1.0, 1.0]
-        # ob_pos = [180, -6.7+1.0, 1.0]
+        # ob_pos = [180, -6.7-1.0, 1.0]
+        ob_pos = [180, -6.7+1.5, 1.0]
         ob_ori = [0, 180, 0]
         ob_state = ObState.ASSIGN
     elif TEST_ID == 3:      # 动态障碍物

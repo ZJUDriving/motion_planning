@@ -96,7 +96,7 @@ class PlannerInterface():
     """ 完成坐标转换，创建Robot坐标系图 """
     def coor_trans(self, waypoint_ahead, command):
         l_width = 3.5   # 车道宽度
-        n_l = 7         # 车道纵向采点个数（奇数）
+        n_l = 5         # 车道纵向采点个数（奇数）
         n_s = len(waypoint_ahead)   # 车道横向采点个数，不含无人车自身位置
         # 根据车道线和当前位置计算坐标变换矩阵
         if command == Command.CHANGELANELEFT:   # 如果切换车道，则车道参考线的方向从第二列点开始计算
@@ -142,7 +142,7 @@ class PlannerInterface():
         end_point = path_buff[-1]
         plan_time = 5
         self.st_map = STMap(self.sl_map.converter, end_point[0], plan_time)
-        self.st_map.add_obstacle(path_buff, [], self.sl_map.dy_ob_traj)
+        self.st_map.add_obstacle(path_buff, self.sl_map.st_ob_traj, self.sl_map.dy_ob_traj)
         # 速度规划
         cur_vel = self.sl_map.robot_vel
         # print(cur_vel)

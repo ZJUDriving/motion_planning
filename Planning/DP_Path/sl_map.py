@@ -19,9 +19,11 @@ class SLMap():
         self.n_s = robot_map.n_s
         self.mid_l = int((self.n_l-1)/2)
         self.l_width = robot_map.l_width
+        self.save_width = robot_map.save_width
         self.ob_list = []       # 障碍物中心位置列表（包含动态障碍物的每一帧）
         self.ob_dist = 0.0      # TODO:障碍物半径目前直接取最大的   
         self.d_s = 8            # 参考线采样间隔
+        self.st_ob_traj = []    # 每个静态障碍物的轨迹记录
         self.dy_ob_traj = []    # 每个动态障碍物的轨迹记录
         self.create_frenet_map()
         self.add_obstacle()
@@ -56,8 +58,10 @@ class SLMap():
         # 对Frenet坐标系进行栅格采样
         self.n_s = len(s_list)
         for s in s_list:
+            offset_down = 0.0 - (self.l_width - self.save_width) / 2.0
+            offset_up = 0.0 + (self.l_width - self.save_width) / 2.0
             s_line = s*np.ones((1,self.n_l))
-            l_line = np.linspace(0.0-self.l_width/2, 0.0+self.l_width/2, num=self.n_l).reshape(1,self.n_l)
+            l_line = np.linspace(offset_down, offset_up, num=self.n_l).reshape(1,self.n_l)
             self.s_map.append(s_line)
             self.l_map.append(l_line)
             if DRAW_ROBOT_FIG:
@@ -70,15 +74,16 @@ class SLMap():
         
 
     def add_obstacle(self):
-        # TODO:静态障碍物未添加轨迹
         for st_ob in self.RMP.static_ob:
             ob_pos = st_ob.ob_pos
             s,l = self.converter.cartesian_to_frenet(ob_pos[0],ob_pos[1])
             ob_point = np.array([s,l])
-            self.ob_list.append(ob_point)
-            self.ob_dist = max(self.ob_dist, st_ob.ob_dist)
-            if DRAW_ROBOT_FIG:  # 绘制障碍物在机器人坐标系下的动态图
-                self.draw_circle(ob_pos[0],ob_pos[1],self.ob_dist,'green')
+            self.st_ob_traj.append(StaticObstacle(ob_point,0.0,st_ob.ob_dist))
+            if self.check_in_line(ob_point, st_ob.ob_dist):
+                self.ob_list.append(ob_point)
+                self.ob_dist = max(self.ob_dist, st_ob.ob_dist)
+                if DRAW_ROBOT_FIG:  # 绘制障碍物在机器人坐标系下的动态图
+                    self.draw_circle(ob_pos[0],ob_pos[1],self.ob_dist,'green')
 
         for dy_ob in self.RMP.dynamic_ob:
             ob_trajectory = ObstacleTrajectory(dy_ob.ob_dist)
@@ -99,8 +104,8 @@ class SLMap():
     def path_sampling(self, curve_path, draw=False, ss=[]):
         if len(ss) == 0:
             s_st = curve_path.t_bios
-            s_en = s_st + np.sum(curve_path.T)
-            ss = np.arange(s_st,s_en,self.d_s)
+            s_en = curve_path.t_end # s_st + np.sum(curve_path.T)
+            ss = np.arange(s_st,s_en,curve_path.dt)
         path_buff = []
         ll = curve_path.calc_point_arr(ss,0)
         for j in range(len(ss)):

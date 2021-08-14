@@ -277,8 +277,8 @@ class LocalPlanner(object):
                                                         args_lateral=args_lat,
                                                         args_longitudinal=args_long)
 
-            print(self.speed_buff[tmp_ind])
-            print(self._target_speed)
+            # print(self.speed_buff[tmp_ind])
+            # print(self._target_speed)
             # self._target_speed = 15.0 # 单位km/h，*5/18=m/s
             control = self._pid_controller.run_step(self._target_speed, self.target_waypoint)
             control.brake = 0.0  
