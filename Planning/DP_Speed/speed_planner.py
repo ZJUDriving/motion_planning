@@ -6,14 +6,11 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-from Utils.tool import save_fig, DRAW_ST_FIG
+from Utils.tool import get_arange, save_fig, DRAW_ST_FIG
 from Model.curve import Curve
 
-# TODO:最后一点的位置非常奇怪
-# TODO:和之前的路径点s并不一一对应，需要重新发送s点
 # TODO:加速度限制
 # TODO:减少运算时间
-# TODO:在不停车的情况下测试
 
 class SpeedPlanner:
     def __init__(self, st_map, cur_vel, speed_lim):
@@ -47,7 +44,7 @@ class SpeedPlanner:
             t_arr = np.array(tuple(t_arr))
             s_arr = np.array(tuple(s_arr))
             curve_speed = Curve(t_arr, curve_dt, s_arr, self.cur_vel)
-            tt = np.arange(t_arr[0], t_arr[-1], curve_dt)
+            tt = get_arange(t_arr[0], t_arr[-1], curve_dt) # np.arange(t_arr[0], t_arr[-1], curve_dt) # # 
             ss = curve_speed.calc_point_arr(tt,0)
             vv = curve_speed.calc_point_arr(tt,1)
             if DRAW_ST_FIG:

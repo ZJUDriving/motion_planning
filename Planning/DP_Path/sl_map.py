@@ -8,7 +8,7 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 
-from Utils.tool import save_fig, to_point, DRAW_ROBOT_FIG, DRAW_SL_FIG
+from Utils.tool import get_arange, save_fig, to_point, DRAW_ROBOT_FIG
 from Model.cartesian_frenet_conversion import CartesianFrenetConverter
 from Model.obstacle import *
 
@@ -104,8 +104,8 @@ class SLMap():
     def path_sampling(self, curve_path, draw=False, ss=[]):
         if len(ss) == 0:
             s_st = curve_path.t_bios
-            s_en = curve_path.t_end # s_st + np.sum(curve_path.T)
-            ss = np.arange(s_st,s_en,curve_path.dt)
+            s_en = s_st + np.sum(curve_path.T) # curve_path.t_end # 
+            ss = get_arange(s_st,s_en,curve_path.dt) # np.arange(s_st,s_en,curve_path.dt)# # 
         path_buff = []
         ll = curve_path.calc_point_arr(ss,0)
         for j in range(len(ss)):

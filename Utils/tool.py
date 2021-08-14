@@ -23,6 +23,14 @@ DRAW_ST_FIG = True
 DRAW_SPEED_FIG = True
 
 
+def get_arange(t_st, t_en, dt):
+    if t_st + dt > t_en:
+        return np.array([])
+    t = np.arange(t_st, t_en, dt)
+    if t[-1] != t_en:
+        t = np.append(t, t_en)
+    return t    
+
 def save_fig():
     global FIG_COUNT
     mkdir(SAVE_PATH)

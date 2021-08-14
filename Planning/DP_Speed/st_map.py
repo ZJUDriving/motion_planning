@@ -14,7 +14,7 @@ class STMap():
         self.converter = converter
         self.ds = 1.0
         self.dt = 0.5
-        self.n_s = int(math.ceil(1.0*s_end/self.ds))+1
+        self.n_s = int(math.floor(1.0*s_end/self.ds))+1
         self.n_t = int(math.ceil(1.0*t_end/self.dt))+1
         self.s_end = self.n_s * self.ds
         self.t_end = self.n_t * self.dt

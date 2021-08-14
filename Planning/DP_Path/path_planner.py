@@ -9,7 +9,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from Utils.tool import to_point, save_fig, cal_dist_arr, DRAW_SL_FIG
+from Utils.tool import get_arange, cal_dist_arr, DRAW_SL_FIG
 from Model.curve import QuinticPoly, Curve
 
 
@@ -143,7 +143,7 @@ class PathPlanner():
         # else:
         #     return ss, ll
         qu_poly = QuinticPoly(p1l,0,0,p2l,0,0,(p2s-p1s))
-        ss = np.arange(p1s,p2s,self.d_s)
+        ss = get_arange(p1s,p2s,self.d_s) # np.arange(p1s,p2s,self.d_s) # get_arange(p1s,p2s,self.d_s) # 
         ll = qu_poly.calc_point(ss,0)
         if tips == 1:
             dll = qu_poly.calc_point(ss,1)

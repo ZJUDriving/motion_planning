@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from Utils.tool import cal_dist_arr
+from Utils.tool import cal_dist_arr, get_arange
 
 # TODO:笛卡尔空间下轨迹那个维度的自变量x，如果是车头不垂直应该问题不大？
 # TODO:把量化间隔固定，直接存储整条曲线？
@@ -38,6 +38,8 @@ class Curve:
             self.curve_list.append(QuinticPoly(x[i],v[i],a[i],x[i+1],v[i+1],a[i+1],self.T[i]))
 
     def calc_point_arr(self, t_arr, order):
+        # if len(t_arr) == 0:
+        #     return np.array([])
         t_arr = t_arr - self.t_bios
         st_i, st_t = self.get_i(t_arr[0])
         res_list = []
@@ -54,6 +56,7 @@ class Curve:
                     t_sum += self.T[i]
                 elif i >= self.n:
                     print("Error, out of limit")
+                    raise IndexError
                     break
         if i >= self.n:
             i = self.n-1
@@ -102,7 +105,7 @@ class Curve:
         arr = 0.0   # TODO：得到2*n的曲线矩阵
         t_max = np.sum(self.T)
         # print(t_max)
-        t_arr = np.arange(0,t_max,self.dt) + self.t_bios
+        t_arr = get_arange(0,t_max,self.dt) + self.t_bios # np.arange(0,t_max,self.dt) + self.t_bios# # 
         x_arr = self.calc_point_arr(t_arr,0)
         rp_arr = np.vstack((t_arr,x_arr))
         min_dist, min_p = cal_dist_arr(rp_arr,p)
@@ -158,9 +161,10 @@ class QuinticPoly:
     def calc_arc_len(self,t0,t1,dt):
         if t0 <= t1:
             len_sign = 1
-            t = np.arange(t0,t1,dt) # 开闭区间不一定准。
+            # print(t0,t1,dt)
+            t = get_arange(t0,t1,dt) # np.arange(t0,t1,dt) # 开闭区间不一定准。
         else:
             len_sign = -1
-            t = np.arange(t1,t0,dt)
+            t = get_arange(t1,t0,dt) # np.arange(t1,t0,dt) # get_arange(t1,t0,dt) # 
         dxt = self.calc_point(t,1)
         return len_sign*dt*np.sum(np.sqrt(1+dxt**2))

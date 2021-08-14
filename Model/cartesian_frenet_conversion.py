@@ -5,6 +5,7 @@ import math
 import numpy as np
 from curve import *
 import matplotlib.pyplot as plt
+from Utils.tool import get_arange
 
 class CartesianFrenetConverter:
     def __init__(self,ex,ey,rx_list,ry_list,vec):
@@ -69,7 +70,7 @@ class CartesianFrenetConverter:
         return self.ref_curve.calc_arc_len(self.rx_ori, rx)
 
     def get_rxy(self, s):
-        rx_list = np.arange(self.rx_ori,self.rx_max,self.d_x)
+        rx_list = get_arange(self.rx_ori,self.rx_max,self.d_x) # np.arange(self.rx_ori,self.rx_max,self.d_x) #  # 
         found = False
         for i in range(len(rx_list)):
             rx_next = rx_list[i]
@@ -85,7 +86,7 @@ class CartesianFrenetConverter:
 
     def show(self):
         # plt.figure()
-        rx_list = np.arange(self.rx_ori,self.rx_max,self.d_x)
+        rx_list = get_arange(self.rx_ori,self.rx_max,self.d_x) # np.arange(self.rx_ori,self.rx_max,self.d_x)#  # 
         ry_list = self.ref_curve.calc_point_arr(rx_list,0)
         plt.plot(rx_list,ry_list)
 
