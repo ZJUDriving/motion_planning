@@ -38,6 +38,7 @@ class PathPlanner():
             path_l.append(self.sl_map.ego_point[1])
             for s in range(self.sl_map.n_s):
                 tmp_l = self.path_ind_list[s]
+                # tmp_l = self.sl_map.mid_l
                 path_s.append(self.sl_map.s_map[s][tmp_l])
                 path_l.append(self.sl_map.l_map[s][tmp_l])
                 if DRAW_SL_FIG:    # 选取的路径点

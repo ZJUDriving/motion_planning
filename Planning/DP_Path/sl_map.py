@@ -66,7 +66,7 @@ class SLMap():
                 break
         # 对Frenet坐标系进行栅格采样
         self.n_s = len(s_list)
-        print(self.n_s)
+        # print(self.n_s)
         for s in s_list:
             offset_down = 0.0 - (self.l_width - self.save_width) / 2.0
             offset_up = 0.0 + (self.l_width - self.save_width) / 2.0

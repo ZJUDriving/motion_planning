@@ -17,6 +17,7 @@ from Model.obstacle import *
 from robot_map import RobotMap
 from Planning.DP_Path.path_planner import PathPlanner
 from Planning.DP_Speed.speed_planner import SpeedPlanner
+from Planning.DP_Path.track_path_planner import TrackPathPlanner
 from Planning.DP_Path.sl_map import SLMap
 from Planning.DP_Speed.st_map import STMap
 
@@ -132,7 +133,7 @@ class PlannerInterface():
     def path_plan(self):
         # 路径规划
         self.sl_map = SLMap(self.robot_map)
-        path_planner = PathPlanner(self.sl_map)     # 初始化路径规划器
+        path_planner = TrackPathPlanner(self.sl_map)     # 初始化路径规划器
         path_buff = path_planner.plan()             # 进行路径规划
         return path_buff
 
