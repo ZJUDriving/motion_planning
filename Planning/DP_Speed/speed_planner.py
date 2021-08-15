@@ -19,6 +19,7 @@ class SpeedPlanner:
         self.speed_lim = speed_lim
         self.dt = self.st_map.dt
         self.ds = self.st_map.ds
+        self.curve_dt = self.dt*1.0/5      # 发送结果的时间离散间隔0.1s
         self.path_s_ind = []
 
     def plan(self):
@@ -40,11 +41,10 @@ class SpeedPlanner:
                 # v = 1.0*(cur_j-p_j)*self.ds/self.dt
                 # speed_buff.append(v)
             # s-t插值，在取每个s路径点对应的速度，即一阶导数
-            curve_dt = self.dt*1.0/5
             t_arr = np.array(tuple(t_arr))
             s_arr = np.array(tuple(s_arr))
-            curve_speed = Curve(t_arr, curve_dt, s_arr, self.cur_vel)
-            tt = get_arange(t_arr[0], t_arr[-1], curve_dt) # np.arange(t_arr[0], t_arr[-1], curve_dt) # # 
+            curve_speed = Curve(t_arr, self.curve_dt, s_arr, self.cur_vel)
+            tt = get_arange(t_arr[0], t_arr[-1], self.curve_dt) # np.arange(t_arr[0], t_arr[-1], curve_dt) # # 
             ss = curve_speed.calc_point_arr(tt,0)
             vv = curve_speed.calc_point_arr(tt,1)
             if DRAW_ST_FIG:

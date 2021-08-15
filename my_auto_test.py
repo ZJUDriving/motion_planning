@@ -23,12 +23,13 @@ import carla
 import random
 import time
 from enum import Enum
+import matplotlib.pyplot as plt
 import numpy as np
 import cv2
 # from agents.navigation.behavior_agent import BehaviorAgent  # pylint: disable=import-error
 
 
-from Utils.tool import get_ob_box
+from Utils.tool import get_ob_box, save_fig, DRAW_ALL_SPEED_FIG
 from Utils.spawn_npc_fun import spawn_npc
 
 IM_WIDTH = 640
@@ -226,6 +227,7 @@ try:
     spectator = world.get_spectator()
     tot_target_reached = 0
     num_min_waypoints = 21
+    speed_record = []
     while True:
         # 监视者
         transform = ego_car.get_transform()
@@ -247,7 +249,12 @@ try:
         agent.get_local_planner().set_speed(speed_limit)
         control = agent.run_step()
         ego_car.apply_control(control)
+        speed_record.append(control.throttle)
     print("[INFO] Mission over")
+    if DRAW_ALL_SPEED_FIG:
+        plt.figure()
+        plt.plot(speed_record)
+        save_fig()
     # time.sleep(60)
 
 finally:

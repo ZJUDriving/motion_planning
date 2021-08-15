@@ -9,7 +9,7 @@ from Utils.tool import get_arange
 
 class CartesianFrenetConverter:
     def __init__(self,ex,ey,rx_list,ry_list,vec):
-        self.d_x = 0.1          # 量化间隔
+        self.d_x = 0.5          # 量化间隔
         # 找到原点
         # T_x = np.diff(rx_list,n=1)      # 计算x维度间隔
         self.ref_curve = Curve(rx_list,self.d_x,ry_list,vec)

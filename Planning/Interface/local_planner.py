@@ -193,13 +193,13 @@ class LocalPlanner(object):
             :param debug: boolean flag to activate waypoints debugging
             :return: control
         """
-        # if self.time_flag > 0:
-        #     self.time_flag -= 1
-        #     print("Stop now")
-        #     return self.stop_now()
-        # elif self.time_flag == 0:
-        #     self.re_plan = True
-        #     self.time_flag = -1
+        if self.time_flag > 0:
+            self.time_flag -= 1
+            print("Wait for replan")
+            return self.stop_now()
+        elif self.time_flag == 0:
+            self.re_plan = True
+            self.time_flag = -1
         
         if target_speed is not None:
             self._target_speed = target_speed
@@ -308,8 +308,8 @@ class LocalPlanner(object):
             
             # control.hand_brake = False
             # control.manual_gear_shift = False
-            self.re_plan = True
-            self.time_flag = 1000
+            # self.re_plan = True
+            self.time_flag = 50
             return self.stop_now()
              
 
