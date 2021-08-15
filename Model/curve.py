@@ -47,7 +47,7 @@ class Curve:
         i = st_i
         pre_j = 0
         for j in range(len(t_arr)):
-            if t_arr[j] > t_sum:
+            if t_arr[j] > t_sum + self.dt:
                 sub_res = self.curve_list[i].calc_point(t_arr[pre_j:j]-t_sum+self.T[i], order)
                 res_list.append(sub_res)
                 i += 1
@@ -56,6 +56,12 @@ class Curve:
                     t_sum += self.T[i]
                 elif i >= self.n:
                     print("Error, out of limit")
+                    print(self.t_bios)
+                    print(self.t_end)
+                    print(t_sum)
+                    print(np.sum(self.T))
+                    print(self.T)
+                    print(t_arr)
                     raise IndexError
                     break
         if i >= self.n:
@@ -75,12 +81,13 @@ class Curve:
         t_sum = 0.0
         if t < 0.0:
             print("Error, t is smaller than 0!")
+            raise IndexError
             return 0, 0.0
         for i in range(self.n): 
             t_sum += self.T[i]
             if t <= t_sum:
                 return i, t-t_sum+self.T[i]
-        print("Error, t is too bigger!")
+        # print("Error, t is too big!")
         return self.n-1, t_sum
 
     def calc_arc_len(self,t0,t1):
@@ -90,6 +97,9 @@ class Curve:
             return 0.0
         st_i, st_t = self.get_i(t0)
         en_i, en_t = self.get_i(t1)
+        if en_t > self.T[en_i]:
+            en_t = self.T[en_i]
+            print("Error, out of T limit")
         if st_i == en_i:
             arc_len = self.curve_list[st_i].calc_arc_len(st_t,en_t,self.dt)
         else:
@@ -98,6 +108,10 @@ class Curve:
             for i in range(st_i+1,en_i):
                 arc_len += self.curve_list[i].calc_arc_len(0,self.T[i],self.dt)
             arc_len += self.curve_list[en_i].calc_arc_len(0,en_t,self.dt)
+        # if arc_len > 1000:
+        #     print(st_i, st_t)
+        #     print(en_i, en_t)
+        #     print(self.n)
         return arc_len
     
     def projection(self,t,x):
@@ -166,5 +180,7 @@ class QuinticPoly:
         else:
             len_sign = -1
             t = get_arange(t1,t0,dt) # np.arange(t1,t0,dt) # get_arange(t1,t0,dt) # 
+        if len(t) == 0:
+            return 0.0
         dxt = self.calc_point(t,1)
         return len_sign*dt*np.sum(np.sqrt(1+dxt**2))

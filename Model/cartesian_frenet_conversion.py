@@ -9,7 +9,7 @@ from Utils.tool import get_arange
 
 class CartesianFrenetConverter:
     def __init__(self,ex,ey,rx_list,ry_list,vec):
-        self.d_x = 0.5          # 量化间隔
+        self.d_x = 0.1          # 量化间隔
         # 找到原点
         # T_x = np.diff(rx_list,n=1)      # 计算x维度间隔
         self.ref_curve = Curve(rx_list,self.d_x,ry_list,vec)
@@ -81,11 +81,13 @@ class CartesianFrenetConverter:
                 break
         if not found:
             rx = self.rx_max
+            print("Error, cannot get rxy")
         ry = self.ref_curve.calc_point(rx,0)
         return rx,ry
 
     def show(self):
         # plt.figure()
+        # plt.scatter(self.rx_ori,self.ry_ori,'green')
         rx_list = get_arange(self.rx_ori,self.rx_max,self.d_x) # np.arange(self.rx_ori,self.rx_max,self.d_x)#  # 
         ry_list = self.ref_curve.calc_point_arr(rx_list,0)
         plt.plot(rx_list,ry_list)

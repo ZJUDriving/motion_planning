@@ -136,8 +136,8 @@ class SpeedPlanner:
             j = 1.0*(cur_j-3*p_j+3*pp_j-ppp_j)*self.ds/((self.dt)**3)
         # 障碍物Cost
         ob_cost = 0.0
-        k_safe = 3.0        # 3.0
-        back_safe_dist = 20.0   # 20
+        k_safe = 4.5        # 3.0
+        back_safe_dist = 25.0   # 20
         front_safe_dist = k_safe * v
         ob_state = self.st_map.ob_mat[cur_i]
         s = cur_j * self.ds

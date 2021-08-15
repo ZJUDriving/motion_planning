@@ -57,8 +57,12 @@ class LocalPlanner(object):
         self._global_plan = None
         self._pid_controller = None
         self.waypoints_queue = deque(maxlen=20000)  # queue with tuples of (waypoint, RoadOption)
-        self._buffer_size = 4
+        self._buffer_size = 7
         self._waypoint_buffer = deque(maxlen=self._buffer_size)
+        # self.pre_check_ind = 0
+        self.pre_ind = 3        # 已到达的waypoint
+        # self.ref_line_size = 7
+        # self.ref_line = deque(maxlen=self.ref_line_size)
 
         self.FPS = fps
         self._init_controller()  # initializing controller
@@ -70,6 +74,7 @@ class LocalPlanner(object):
         self.local_goal = []
         self.stop_flag = False
         self.replan_ind = 10
+        self.time_flag = -1
 
     def reset_vehicle(self):
         """Reset the ego-vehicle"""
@@ -143,6 +148,7 @@ class LocalPlanner(object):
             self.waypoints_queue.append(elem)
 
         if clean:
+            vehicle_transform = self._vehicle.get_transform()
             self._waypoint_buffer.clear()
             for _ in range(self._buffer_size):
                 if self.waypoints_queue:
@@ -150,6 +156,12 @@ class LocalPlanner(object):
                         self.waypoints_queue.popleft())
                 else:
                     break
+            # for i in range(len(self._waypoint_buffer)):
+            #     if distance_vehicle(self._waypoint_buffer[i], vehicle_transform) > self._min_distance:
+            #         break
+            # self.pre_check_ind = i
+            # print("Check index: %d" % self.pre_check_ind)
+            
 
         self._global_plan = True
 
@@ -181,6 +193,13 @@ class LocalPlanner(object):
             :param debug: boolean flag to activate waypoints debugging
             :return: control
         """
+        # if self.time_flag > 0:
+        #     self.time_flag -= 1
+        #     print("Stop now")
+        #     return self.stop_now()
+        # elif self.time_flag == 0:
+        #     self.re_plan = True
+        #     self.time_flag = -1
         
         if target_speed is not None:
             self._target_speed = target_speed
@@ -227,20 +246,23 @@ class LocalPlanner(object):
         vehicle_transform = self._vehicle.get_transform()
         max_index = -1
 
-        for i, (waypoint, _) in enumerate(self._waypoint_buffer):
-            if distance_vehicle(
-                    waypoint, vehicle_transform) < self._min_distance:
-                max_index = i
+        # for i, (waypoint, _) in enumerate(self._waypoint_buffer):
+        #     if distance_vehicle(
+        #             waypoint, vehicle_transform) < self._min_distance:
+        #         max_index = i
+        for i in range(self.pre_ind, len(self._waypoint_buffer)):
+            if distance_vehicle(self._waypoint_buffer[i][0], vehicle_transform) < self._min_distance:
+                max_index = i - self.pre_ind
         if max_index >= 0:
             for i in range(max_index + 1):
-                self.updata_waypoint()
+                self.add_waypoint()
             self.re_plan = True
             # print("in")
                 
 
         # 局部路径和速度规划      
         if self.re_plan:
-            # print("replan")
+            print("replan")
             if self._waypoint_buffer:
                 planner = PlannerInterface(self.world, self._waypoint_buffer, self._vehicle, self.ob_list)
             else:
@@ -258,14 +280,13 @@ class LocalPlanner(object):
                 for i in range(self.local_ind,len(self.path_buff)):
                     # print(self.path_buff[i])
                     # print(vehicle_transform.location)
-                    if self.cal_dist(
-                            self.path_buff[i], vehicle_transform.location) < self._min_distance:
+                    if self.cal_dist(self.path_buff[i], vehicle_transform.location) < self._min_distance:
                         tmp_ind = i
                         # print(tmp_ind)
                 self.local_ind = tmp_ind
             else:
                 tmp_ind = -1
-                # self.updata_waypoint()
+                # self.add_waypoint()
                 self.re_plan = True
 
         # 控制器
@@ -284,14 +305,12 @@ class LocalPlanner(object):
             control.brake = 0.0  
         else:
             print("Stop now")
-            control = carla.VehicleControl()
-            control.steer = 0.0
-            control.throttle = 0.0
-            control.brake = 1.0
+            
             # control.hand_brake = False
             # control.manual_gear_shift = False
             self.re_plan = True
-            return control
+            self.time_flag = 1000
+            return self.stop_now()
              
 
         # if debug:
@@ -299,7 +318,14 @@ class LocalPlanner(object):
         #                    [self.target_waypoint], 1.0)
         return control
 
-    def updata_waypoint(self, del_pre=True):
+    def stop_now(self):
+        control = carla.VehicleControl()
+        control.steer = 0.0
+        control.throttle = 0.0
+        control.brake = 1.0
+        return control
+
+    def add_waypoint(self, del_pre=True):
         if del_pre and self._waypoint_buffer:
             self._waypoint_buffer.popleft()
         if self.waypoints_queue:

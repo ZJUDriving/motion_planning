@@ -17,10 +17,10 @@ SAVE_PATH = "../output/000"
 
 DRAW_DEBUG = True           # 在Carla中绘制结果
 DRAW_WORLD_FIG = False
-DRAW_ROBOT_FIG = False
-DRAW_SL_FIG = True     # 绘制路径规划结果并保存图片
-DRAW_ST_FIG = True
-DRAW_SPEED_FIG = True
+DRAW_ROBOT_FIG = True
+DRAW_SL_FIG = False     # 绘制路径规划结果并保存图片
+DRAW_ST_FIG = False
+DRAW_SPEED_FIG = False
 
 
 def get_arange(t_st, t_en, dt):

@@ -43,20 +43,30 @@ class SLMap():
         if DRAW_ROBOT_FIG:
             plt.figure()
             self.converter.show()
+            plt.scatter(0.0,0.0,c='yellow')
+            for i in range(len(rx_list)):
+                plt.scatter(rx_list[i],ry_list[i],c='green')
         # 对参考线进行等间距采样
         self.s_map = []
         self.l_map = []
         end_s = self.converter.get_s(rx_list[-1])
         ss = self.d_s
         s_list = []     # 参考线上的采样点
+        # print(rx_list[-1])
+        # print(end_s)
+        if end_s > 100:
+            # save_fig()
+            print("Error, frenet map too big")
+            raise ValueError
         while True:
             s_list.append(ss)
             ss += self.d_s
-            if ss+self.d_s/2 >= end_s:
+            if ss + self.d_s/2 >= end_s:
                 s_list.append(end_s)
                 break
         # 对Frenet坐标系进行栅格采样
         self.n_s = len(s_list)
+        print(self.n_s)
         for s in s_list:
             offset_down = 0.0 - (self.l_width - self.save_width) / 2.0
             offset_up = 0.0 + (self.l_width - self.save_width) / 2.0
@@ -66,7 +76,7 @@ class SLMap():
             self.l_map.append(l_line)
             if DRAW_ROBOT_FIG:
                 rx,ry = self.converter.frenet_to_cartesian(s,0.0)
-                plt.scatter(rx,ry,c='yellow')
+                plt.scatter(rx,ry,c='black')
         self.s_map = np.concatenate(tuple(self.s_map),axis=0).reshape(self.n_s,self.n_l)
         self.l_map = np.concatenate(tuple(self.l_map),axis=0).reshape(self.n_s,self.n_l)
         # print(self.s_map)
