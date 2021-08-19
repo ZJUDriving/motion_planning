@@ -270,24 +270,31 @@ class LocalPlanner(object):
             self.path_buff, self.speed_buff = planner.run_step()
             self.re_plan = False
             self.local_ind = 0
-
-        # 确定当前目标点和期望速度
-        if len(self.path_buff) == 0:   # 没有找到路，停车
+            # print(max(self.speed_buff))
+            # print(self.cal_dist(self.path_buff[0],self.path_buff[-1]) < 1.0)
+            
+        if len(self.speed_buff) == 0 or max(self.speed_buff) < 0.1 or \
+                self.cal_dist(self.path_buff[0],self.path_buff[-1]) < 1.0:
+            print("No speed")
             tmp_ind = -1
         else:
-            if self.local_ind < len(self.path_buff) - self.replan_ind:   # 根据路径更新下一个局部目标点
-                tmp_ind = self.local_ind
-                for i in range(self.local_ind,len(self.path_buff)):
-                    # print(self.path_buff[i])
-                    # print(vehicle_transform.location)
-                    if self.cal_dist(self.path_buff[i], vehicle_transform.location) < self._min_distance:
-                        tmp_ind = i
-                        # print(tmp_ind)
-                self.local_ind = tmp_ind
-            else:
+            # 确定当前目标点和期望速度
+            if len(self.path_buff) == 0:   # 没有找到路，停车
                 tmp_ind = -1
-                # self.add_waypoint()
-                self.re_plan = True
+            else:
+                if self.local_ind < len(self.path_buff) - self.replan_ind:   # 根据路径更新下一个局部目标点
+                    tmp_ind = self.local_ind
+                    for i in range(self.local_ind,len(self.path_buff)):
+                        # print(self.path_buff[i])
+                        # print(vehicle_transform.location)
+                        if self.cal_dist(self.path_buff[i], vehicle_transform.location) < self._min_distance:
+                            tmp_ind = i
+                    self.local_ind = tmp_ind
+                else:
+                    tmp_ind = len(self.path_buff) - self.replan_ind
+                    print("Path end")
+                    # self.add_waypoint()
+                    self.re_plan = True
 
         # 控制器
         if tmp_ind >= 0:
@@ -311,7 +318,6 @@ class LocalPlanner(object):
             # self.re_plan = True
             self.time_flag = 50
             return self.stop_now()
-             
 
         # if debug:
         #     draw_waypoints(self._vehicle.get_world(),

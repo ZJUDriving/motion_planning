@@ -161,6 +161,31 @@ class DriverlessAgent():
 
         return route
 
+    def _overtake(self, location, waypoint, vehicle_list):
+        """
+        This method is in charge of overtaking behaviors.
+
+            :param location: current location of the agent
+            :param waypoint: current waypoint of the agent
+            :param vehicle_list: list of all the nearby vehicles
+        """
+
+        left_turn = waypoint.left_lane_marking.lane_change
+        right_turn = waypoint.right_lane_marking.lane_change
+
+        left_wpt = waypoint.get_left_lane()
+        right_wpt = waypoint.get_right_lane()
+
+        if (left_turn == carla.LaneChange.Left or left_turn ==
+                carla.LaneChange.Both) and waypoint.lane_id * left_wpt.lane_id > 0 and left_wpt.lane_type == carla.LaneType.Driving:
+            print("Overtaking to the left!")
+            self.behavior.overtake_counter = 200
+            self.set_destination(left_wpt.transform.location, self.end_waypoint.transform.location, clean=True)
+        elif right_turn == carla.LaneChange.Right and waypoint.lane_id * right_wpt.lane_id > 0 and right_wpt.lane_type == carla.LaneType.Driving:
+            print("Overtaking to the right!")
+            self.behavior.overtake_counter = 200
+            self.set_destination(right_wpt.transform.location, self.end_waypoint.transform.location, clean=True)
+
     def run_step(self, debug=False):
         """
         Execute one step of navigation.
@@ -171,8 +196,8 @@ class DriverlessAgent():
         control = None
         # if self.behavior.tailgate_counter > 0:
         #     self.behavior.tailgate_counter -= 1
-        # if self.behavior.overtake_counter > 0:
-        #     self.behavior.overtake_counter -= 1
+        if self.behavior.overtake_counter > 0:
+            self.behavior.overtake_counter -= 1
 
         ego_vehicle_loc = self.vehicle.get_location()
         ego_vehicle_wp = self._map.get_waypoint(ego_vehicle_loc)
