@@ -79,12 +79,10 @@ def mkdir(path):
     # path=path.strip()
     # # 去除尾部 \ 符号
     # path=path.rstrip("\\")
- 
     # 判断路径是否存在
     # 存在     True
     # 不存在   False
     isExists=os.path.exists(path)
- 
     # 判断结果
     if not isExists:
         # 如果不存在则创建目录
@@ -93,15 +91,18 @@ def mkdir(path):
         print("Create folder successfully")
     # else:
     #     print("Folder already exists")
- 
 
-
+class Behavior(Enum):
+    VOID = -1
+    STOP = 0
+    LEFT = 1
+    RIGHT = 2
+    STRAIGHT = 3
+    LANEFOLLOW = 4
+    CHANGELANELEFT = 5
+    CHANGELANERIGHT = 6
 
 class Command(Enum):
-    """
-    RoadOption represents the possible topological configurations
-    when moving from a segment of lane to other.
-    """
     VOID = -1
     LEFT = 1
     RIGHT = 2

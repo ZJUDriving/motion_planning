@@ -38,7 +38,7 @@ SHOW_CAM = False
 DRAW_ROAD_LINE = False
 DRAW_OB = False
 TOWN = 'Town03' # 地图编号
-TEST_ID = 6     # 测试条件
+TEST_ID = 2     # 测试条件
 FPS = 20 # 50慢 # 20快
 
 

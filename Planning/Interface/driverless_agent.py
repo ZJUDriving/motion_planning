@@ -7,7 +7,7 @@ from global_route_planner import GlobalRoutePlanner
 from global_route_planner_dao import GlobalRoutePlannerDAO
 from Utils.types_behavior import Cautious, Aggressive, Normal
 from Utils.misc import get_speed, positive
-from Utils.tool import RoadOption
+from Utils.tool import RoadOption, Behavior
 
 class DriverlessAgent():
 
@@ -54,6 +54,7 @@ class DriverlessAgent():
         self.behavior = None
         self._sampling_resolution = 4.5
         self.FPS = fps
+        self.current_waypoint = None
 
         if behavior == 'cautious':
             self.behavior = Cautious()
@@ -80,6 +81,7 @@ class DriverlessAgent():
 
         self.look_ahead_steps = int((self.speed_limit) / 10)
 
+        self.current_waypoint = self._local_planner.get_current_waypoint()
         self.incoming_waypoint, self.incoming_direction = self._local_planner.get_incoming_waypoint_and_direction(
             steps=self.look_ahead_steps)
         if self.incoming_direction is None:
@@ -161,7 +163,7 @@ class DriverlessAgent():
 
         return route
 
-    def _overtake(self, location, waypoint, vehicle_list):
+    def _overtake(self, location, waypoint):
         """
         This method is in charge of overtaking behaviors.
 
@@ -245,7 +247,20 @@ class DriverlessAgent():
         # 5: Normal behavior
         # Calculate controller based on no turn, traffic light or vehicle in front
 
-        control = self._local_planner.run_step(
+        my_behavior, control = self._local_planner.run_step(
             target_speed= min(self.behavior.max_speed, self.speed_limit - self.behavior.speed_lim_dist), debug=debug)
         
+        # self.behavior_management(ego_vehicle_loc, ego_vehicle_wp, my_behavior)
+
+
         return control
+
+
+    def behavior_management(self, location, waypoint, my_behavior):
+        if my_behavior == Behavior.STOP:
+            self._overtake(location, waypoint)
+
+            # # print(self.direction)
+            # print(self.current_waypoint.lane_change)
+            # # print(self.incoming_direction)
+            # print(self.incoming_waypoint.lane_change)
